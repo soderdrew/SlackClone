@@ -1,0 +1,116 @@
+You are an expert developer in React, TypeScript, Node.js, Express, Supabase, Socket.io, TailwindCSS, shadcn/ui, and Redux Toolkit. You are running on a Windows device, so all commands are run on powershell.
+
+## Key Principles
+- Write concise, technical responses with accurate TypeScript and Node.js examples.
+- Use functional, declarative programming. Avoid classes where unnecessary.
+- Prioritize modularity and reusable components.
+- Use descriptive variable names with auxiliary verbs (e.g., isTyping, hasError).
+- Use lowercase with dashes for directories (e.g., components/chat-message).
+- Favor named exports for components.
+- Apply the Receive an Object, Return an Object (RORO) pattern for flexibility.
+
+---
+
+## Frontend Rules
+
+### React + TypeScript
+- Use functional components with TypeScript interfaces for props.
+- Use `function` declarations for components rather than `const` where possible.
+- Maintain a clean structure: one primary component per file, with subcomponents and helpers.
+- Prefer hooks for state and lifecycle management (e.g., `useState`, `useEffect`).
+- Use `React Router` for navigation and protected routes.
+- Avoid deeply nested JSX; break down into smaller components.
+
+### Styling
+- Use TailwindCSS with the utility-first approach for styling.
+- Use shadcn/ui components for accessible, prebuilt elements.
+- Follow a mobile-first design strategy.
+- Adhere to dark mode support when styling.
+- Use consistent class naming conventions with Tailwind's `classVarianceAuthority` (CVA) for variants.
+
+### State Management
+- Use Redux Toolkit for global state:
+  - Create slices for features (e.g., `authSlice`, `chatSlice`).
+  - Use `createAsyncThunk` for async actions like fetching data.
+- Use `Socket.io-client` for real-time state updates:
+  - Synchronize presence, typing indicators, and new messages.
+  - Maintain connection in `useEffect` with proper cleanup.
+
+---
+
+## Backend Rules
+
+### Node.js + Express
+- Use middleware for handling common tasks (e.g., authentication, error handling).
+- Write modular route handlers (one file per feature, e.g., `authRoutes`, `chatRoutes`).
+- Prefer `async/await` over callbacks for cleaner asynchronous code.
+- Use environment variables (`process.env`) for sensitive configuration like Supabase keys.
+- Implement comprehensive validation for incoming data (e.g., `zod` schemas).
+
+### Supabase
+- Use Supabase as the primary backend service:
+  - Leverage `Supabase Auth` for user authentication and session management.
+  - Use `Row Level Security` (RLS) policies to enforce role-based access control.
+  - Use Supabase Realtime for subscriptions to live updates.
+  - Store files in `Supabase Storage` with proper access policies.
+- Use SQL for complex queries and ensure indexed fields for performance.
+- Use Edge Functions for serverless APIs requiring advanced logic.
+
+---
+
+## Infrastructure
+
+### Real-Time Communication
+- Use `Socket.io` for WebSocket-based features:
+  - Implement room management for chat channels.
+  - Synchronize presence and handle typing indicators.
+  - Use Redis (planned) for presence tracking.
+
+### File Handling
+- Store uploaded files in `Supabase Storage`.
+- Provide pre-signed URLs for secure file access.
+- Implement file validations for type, size, and metadata.
+
+### Authentication
+- Use `Supabase Auth` for secure user authentication:
+  - Support OAuth providers and magic links.
+  - Validate JWT tokens on both frontend and backend.
+
+---
+
+## Conventions
+
+### Naming
+- Boolean variables: Use auxiliary verbs like `is`, `has`, `can` (e.g., `isOnline`, `hasAccess`).
+- Filenames: Use lowercase with dashes (e.g., `workspace-sidebar.tsx`).
+- Extensions: Use `.slice.ts`, `.test.tsx`, `.util.ts`, `.type.ts` as appropriate.
+
+### Component Structure
+- Organize files into microfolders:
+  - `components/feature-name/ComponentName.tsx`
+  - `components/feature-name/helpers.ts`
+  - `components/feature-name/types.ts`
+- Follow this order in files: Component declaration, styled components, TypeScript types.
+
+---
+
+## Testing and Validation
+- Use `ESLint` and `Prettier` for code formatting and quality.
+- Write unit tests for utility functions, hooks, and reducers.
+- Write integration tests for complex components and backend routes.
+- Use Supabase's local development tools for testing database interactions.
+- Simulate real-time interactions with mocked `Socket.io` events.
+
+---
+
+## Accessibility
+- Ensure interfaces are keyboard-navigable.
+- Add ARIA labels and roles where necessary.
+- Maintain high contrast ratios for readability (WCAG standards).
+
+---
+
+## Documentation
+- Write clear comments for complex logic and edge cases.
+- Keep `README.md` files updated with project setup and usage instructions.
+- Document Supabase schema, RLS policies, and Edge Functions for clarity.
