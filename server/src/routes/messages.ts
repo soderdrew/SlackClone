@@ -105,7 +105,13 @@ router.post('/messages', authenticateToken, async (req: Request, res: Response):
       return;
     }
 
-    // Verify user has access to the channel
+    // Get channel type and user's membership status
+    const { data: channel } = await supabase
+      .from('channels')
+      .select('type')
+      .eq('id', channel_id)
+      .single();
+
     const { data: membership } = await supabase
       .from('channel_members')
       .select('role')
@@ -113,15 +119,27 @@ router.post('/messages', authenticateToken, async (req: Request, res: Response):
       .eq('user_id', userId)
       .single();
 
-    const { data: channel } = await supabase
-      .from('channels')
-      .select('type')
-      .eq('id', channel_id)
-      .single();
-
-    if (!channel || (!membership && channel.type === 'private')) {
+    // If channel is private and user is not a member, deny access
+    if (channel?.type === 'private' && !membership) {
       res.status(403).json({ error: 'You do not have access to this channel' });
       return;
+    }
+
+    // If public channel and user is not a member, add them as a member
+    if (channel?.type === 'public' && !membership) {
+      const { error: memberError } = await supabase
+        .from('channel_members')
+        .insert([
+          {
+            channel_id,
+            user_id: userId,
+            role: 'member'
+          }
+        ]);
+
+      if (memberError) {
+        console.error('Error adding user as channel member:', memberError);
+      }
     }
 
     // Create the message

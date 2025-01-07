@@ -6,6 +6,7 @@ import { channelService } from '../../services/channelService';
 import { setChannels, setLoading, setError } from '../../features/channels/channelsSlice';
 import { CreateChannelModal } from '../channels/CreateChannelModal';
 import { Channel } from '../../types/channel';
+import { ChevronDownIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 export function Sidebar() {
   const dispatch = useAppDispatch();
@@ -13,6 +14,8 @@ export function Sidebar() {
   const { channels = [], isLoading } = useAppSelector((state) => state.channels);
   const { user } = useAppSelector((state) => state.auth);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
+  const [isDMsExpanded, setIsDMsExpanded] = useState(true);
 
   useEffect(() => {
     async function fetchChannels() {
@@ -54,15 +57,12 @@ export function Sidebar() {
   }, [dispatch]);
 
   const renderChannelList = () => {
-    console.log('Rendering channel list with channels:', channels); // Debug log
-    
     if (!Array.isArray(channels)) {
       console.error('Channels is not an array:', channels);
       return null;
     }
 
     if (channels.length === 0) {
-      console.log('No channels to display'); // Debug log
       return (
         <div className="text-gray-400 text-sm px-4">No channels available</div>
       );
@@ -70,19 +70,16 @@ export function Sidebar() {
 
     return (
       <ul className="space-y-1">
-        {channels.map((channel: Channel) => {
-          console.log('Rendering channel:', channel); // Debug log
-          return (
-            <li key={channel.id}>
-              <Link
-                to={`/channels/${channel.id}`}
-                className="flex items-center px-4 py-1 text-gray-300 hover:bg-gray-800 rounded-md"
-              >
-                # {channel.name}
-              </Link>
-            </li>
-          );
-        })}
+        {channels.map((channel: Channel) => (
+          <li key={channel.id}>
+            <Link
+              to={`/channels/${channel.id}`}
+              className="flex items-center px-4 py-1 text-gray-300 hover:bg-gray-800 rounded-md"
+            >
+              # {channel.name}
+            </Link>
+          </li>
+        ))}
       </ul>
     );
   };
@@ -108,49 +105,81 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto py-4">
         {/* Channels Section */}
         <div className="mb-6">
-          <div className="flex items-center justify-between px-4 mb-2">
-            <h2 className="text-gray-400 text-sm font-medium">Channels</h2>
-            <Button onClick={() => setIsCreateModalOpen(true)} variant="ghost" size="sm">
-              +
-            </Button>
-          </div>
+          <button
+            onClick={() => setIsChannelsExpanded(!isChannelsExpanded)}
+            className="w-full px-4 mb-2 flex items-center justify-between group"
+          >
+            <div className="flex items-center">
+              {isChannelsExpanded ? (
+                <ChevronDownIcon className="h-3 w-3 text-gray-400 mr-1" />
+              ) : (
+                <ChevronRightIcon className="h-3 w-3 text-gray-400 mr-1" />
+              )}
+              <h2 className="text-gray-400 text-sm font-medium">Channels</h2>
+            </div>
+          </button>
           
-          {isLoading ? (
-            <div className="text-gray-400 text-sm px-4">Loading channels...</div>
-          ) : (
-            renderChannelList()
+          {isChannelsExpanded && (
+            <div className="space-y-1">
+              {isLoading ? (
+                <div className="text-gray-400 text-sm px-4">Loading channels...</div>
+              ) : (
+                <>
+                  {renderChannelList()}
+                  <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center w-full px-4 py-1 text-gray-300 bg-gray-900 hover:bg-gray-800 hover:text-white transition-colors"
+                  >
+                    <span>+ Add Channel</span>
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
 
         {/* Direct Messages Section */}
         <div>
-          <div className="px-4 mb-2 flex justify-between items-center group">
-            <h2 className="text-gray-400 uppercase text-xs font-semibold tracking-wider">Direct Messages</h2>
-            <button
-              onClick={() => console.log('Add DM clicked')}
-              className="text-gray-400 hover:bg-gray-800 p-1 rounded transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-          </div>
-          <div className="space-y-1">
-            <Link
-              to="/dm/john-doe"
-              className="flex items-center px-4 py-1 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-            >
-              <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-              John Doe
-            </Link>
-            <Link
-              to="/dm/jane-smith"
-              className="flex items-center px-4 py-1 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-            >
-              <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
-              Jane Smith
-            </Link>
-          </div>
+          <button
+            onClick={() => setIsDMsExpanded(!isDMsExpanded)}
+            className="w-full px-4 mb-2 flex items-center justify-between group"
+          >
+            <div className="flex items-center">
+              {isDMsExpanded ? (
+                <ChevronDownIcon className="h-3 w-3 text-gray-400 mr-1" />
+              ) : (
+                <ChevronRightIcon className="h-3 w-3 text-gray-400 mr-1" />
+              )}
+              <h2 className="text-gray-400 text-sm font-medium">Direct Messages</h2>
+            </div>
+          </button>
+
+          {isDMsExpanded && (
+            <div className="space-y-1">
+              <div className="space-y-1">
+                <Link
+                  to="/dm/john-doe"
+                  className="flex items-center px-4 py-1 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                >
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                  John Doe
+                </Link>
+                <Link
+                  to="/dm/jane-smith"
+                  className="flex items-center px-4 py-1 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                >
+                  <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+                  Jane Smith
+                </Link>
+              </div>
+              <button
+                onClick={() => console.log('Start new message clicked')}
+                className="flex items-center w-full px-4 py-1 text-gray-300 bg-gray-900 hover:bg-gray-800 hover:text-white transition-colors"
+              >
+                <span>+ Start a New Message</span>
+              </button>
+            </div>
+          )}
         </div>
       </nav>
 

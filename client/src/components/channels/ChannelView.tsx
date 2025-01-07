@@ -7,6 +7,7 @@ import { Message, SendMessageData } from '../../types/message';
 import { addMessage, setChannelMessages, setLoading } from '../../features/messages/messagesSlice';
 import { setCurrentChannel } from '../../features/channels/channelsSlice';
 import { messageService } from '../../services/messageService';
+import { channelService } from '../../services/channelService';
 import { formatDistanceToNow } from 'date-fns';
 
 export function ChannelView() {
@@ -19,6 +20,7 @@ export function ChannelView() {
   
   // Local state for new message input
   const [newMessage, setNewMessage] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
   
   // Ref for message container to auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -45,6 +47,7 @@ export function ChannelView() {
   useEffect(() => {
     async function loadMessages() {
       if (!currentChannel) return;
+      if (!currentChannel.is_member && currentChannel.type === 'public') return;
 
       try {
         dispatch(setLoading(true));
@@ -58,7 +61,7 @@ export function ChannelView() {
     }
 
     loadMessages();
-  }, [currentChannel?.id, dispatch]);
+  }, [currentChannel?.id, currentChannel?.is_member, dispatch]);
 
   // Handle sending a new message
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -135,10 +138,50 @@ export function ChannelView() {
     );
   };
 
+  const handleJoinChannel = async () => {
+    if (!currentChannel || !user) return;
+    
+    try {
+      setIsJoining(true);
+      await channelService.joinChannel(currentChannel.id);
+      // Refresh the channel to update is_member status
+      const updatedChannel = await channelService.getChannel(currentChannel.id);
+      dispatch(setCurrentChannel(updatedChannel));
+    } catch (error) {
+      console.error('Failed to join channel:', error);
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
   if (!currentChannel) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <p className="text-gray-500">Select a channel to start chatting</p>
+      </div>
+    );
+  }
+
+  // Show join prompt for public channels when not a member
+  if (!currentChannel.is_member && currentChannel.type === 'public') {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+            Welcome to #{currentChannel.name}
+          </h2>
+          <p className="text-gray-600 mb-6">
+            This is the beginning of the {currentChannel.name} channel.
+            {currentChannel.description && ` ${currentChannel.description}`}
+          </p>
+          <Button
+            onClick={handleJoinChannel}
+            disabled={isJoining}
+            className="w-full"
+          >
+            {isJoining ? 'Joining...' : 'Join Channel'}
+          </Button>
+        </div>
       </div>
     );
   }

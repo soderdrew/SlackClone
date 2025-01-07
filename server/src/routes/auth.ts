@@ -36,6 +36,9 @@ router.post('/signup', async (req, res) => {
 
     if (profileError) throw profileError;
 
+    // Add user to default channels
+    await addToDefaultChannels(authData.user.id);
+
     res.json({ 
       message: 'Signup successful. Please check your email for verification.',
       user: authData.user 
@@ -125,5 +128,54 @@ router.post('/update-password', async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
+
+// After successful registration, add user to default channels
+const addToDefaultChannels = async (userId: string) => {
+  try {
+    // Get default channels (general and random)
+    const { data: defaultChannels } = await supabase
+      .from('channels')
+      .select('id, name')
+      .in('name', ['general', 'random']);
+
+    if (!defaultChannels?.length) return;
+
+    // Add user to each default channel
+    for (const channel of defaultChannels) {
+      const { error: memberError } = await supabase
+        .from('channel_members')
+        .insert([
+          {
+            channel_id: channel.id,
+            user_id: userId,
+            role: 'member'
+          }
+        ]);
+
+      if (memberError) {
+        console.error(`Error adding user to channel ${channel.id}:`, memberError);
+        continue;
+      }
+
+      // Add welcome message
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert([
+          {
+            channel_id: channel.id,
+            user_id: userId,
+            content: `<@${userId}> joined #${channel.name}`,
+            is_system_message: true
+          }
+        ]);
+
+      if (messageError) {
+        console.error(`Error creating welcome message in channel ${channel.id}:`, messageError);
+      }
+    }
+  } catch (error) {
+    console.error('Error adding user to default channels:', error);
+  }
+};
 
 export default router; 

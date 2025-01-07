@@ -23,6 +23,10 @@ class ChannelService {
     return response.data;
   }
 
+  async joinChannel(channelId: string): Promise<void> {
+    await api.post(`/channels/${channelId}/join`);
+  }
+
   async updateChannel(id: string, data: Partial<Channel>): Promise<Channel> {
     const response = await api.put<Channel>(`/channels/${id}`, data);
     return response.data;

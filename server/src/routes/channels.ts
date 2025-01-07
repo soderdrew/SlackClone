@@ -213,4 +213,78 @@ router.get('/:channelId/members', authenticateToken, async (req: Request, res: R
   }
 });
 
+// Join a channel
+router.post('/:channelId/join', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { channelId } = req.params;
+    const userId = req.user?.id;
+
+    // Check if channel exists and is public
+    const { data: channel } = await supabase
+      .from('channels')
+      .select('type')
+      .eq('id', channelId)
+      .single();
+
+    if (!channel) {
+      res.status(404).json({ error: 'Channel not found' });
+      return;
+    }
+
+    if (channel.type !== 'public') {
+      res.status(403).json({ error: 'Cannot join private channels directly' });
+      return;
+    }
+
+    // Check if already a member
+    const { data: existingMembership } = await supabase
+      .from('channel_members')
+      .select('id')
+      .eq('channel_id', channelId)
+      .eq('user_id', userId)
+      .single();
+
+    if (existingMembership) {
+      res.status(400).json({ error: 'Already a member of this channel' });
+      return;
+    }
+
+    // Add user as member
+    const { error: memberError } = await supabase
+      .from('channel_members')
+      .insert([
+        {
+          channel_id: channelId,
+          user_id: userId,
+          role: 'member'
+        }
+      ]);
+
+    if (memberError) throw memberError;
+
+    // Create system message about user joining
+    const { error: messageError } = await supabase
+      .from('messages')
+      .insert([
+        {
+          channel_id: channelId,
+          user_id: userId,
+          content: `<@${userId}> joined the channel`,
+          is_system_message: true
+        }
+      ]);
+
+    if (messageError) {
+      console.error('Error creating system message:', messageError);
+    }
+
+    res.status(200).json({ message: 'Successfully joined channel' });
+  } catch (error: any) {
+    console.error('Error joining channel:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to join channel' 
+    });
+  }
+});
+
 export default router; 
