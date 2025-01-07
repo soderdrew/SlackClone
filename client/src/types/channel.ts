@@ -12,10 +12,11 @@ export interface Channel {
 }
 
 export interface ChannelMember {
-  user_id: string;
-  channel_id: string;
+  id: string;
+  username: string;
+  full_name?: string;
+  avatar_url?: string;
   role: 'admin' | 'member';
-  joined_at: string;
 }
 
 export interface CreateChannelData {

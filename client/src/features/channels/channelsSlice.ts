@@ -1,9 +1,19 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Channel, ChannelState } from '../../types/channel';
+import { Channel } from '../../types/channel';
+import { ChannelMember } from '../../types/channel';
+
+interface ChannelState {
+  channels: Channel[];
+  currentChannel: Channel | null;
+  channelMembers: { [channelId: string]: ChannelMember[] };
+  isLoading: boolean;
+  error: string | null;
+}
 
 const initialState: ChannelState = {
   channels: [],
   currentChannel: null,
+  channelMembers: {},
   isLoading: false,
   error: null,
 };
@@ -12,51 +22,35 @@ const channelsSlice = createSlice({
   name: 'channels',
   initialState,
   reducers: {
-    setChannels: (state, action: PayloadAction<Channel[]>) => {
+    setChannels(state, action: PayloadAction<Channel[]>) {
       state.channels = action.payload;
-      state.error = null;
     },
-    addChannel: (state, action: PayloadAction<Channel>) => {
-      state.channels.push(action.payload);
-      state.error = null;
-    },
-    setCurrentChannel: (state, action: PayloadAction<Channel | null>) => {
+    setCurrentChannel(state, action: PayloadAction<Channel>) {
       state.currentChannel = action.payload;
-      state.error = null;
     },
-    updateChannel: (state, action: PayloadAction<Channel>) => {
-      const index = state.channels.findIndex(channel => channel.id === action.payload.id);
-      if (index !== -1) {
-        state.channels[index] = action.payload;
-      }
-      if (state.currentChannel?.id === action.payload.id) {
-        state.currentChannel = action.payload;
-      }
-      state.error = null;
+    addChannel(state, action: PayloadAction<Channel>) {
+      state.channels.push(action.payload);
     },
-    deleteChannel: (state, action: PayloadAction<string>) => {
-      state.channels = state.channels.filter(channel => channel.id !== action.payload);
-      if (state.currentChannel?.id === action.payload) {
-        state.currentChannel = null;
-      }
-      state.error = null;
+    setChannelMembers(
+      state,
+      action: PayloadAction<{ channelId: string; members: ChannelMember[] }>
+    ) {
+      state.channelMembers[action.payload.channelId] = action.payload.members;
     },
-    setLoading: (state, action: PayloadAction<boolean>) => {
+    setLoading(state, action: PayloadAction<boolean>) {
       state.isLoading = action.payload;
     },
-    setError: (state, action: PayloadAction<string | null>) => {
+    setError(state, action: PayloadAction<string | null>) {
       state.error = action.payload;
-      state.isLoading = false;
     },
   },
 });
 
 export const {
   setChannels,
-  addChannel,
   setCurrentChannel,
-  updateChannel,
-  deleteChannel,
+  addChannel,
+  setChannelMembers,
   setLoading,
   setError,
 } = channelsSlice.actions;

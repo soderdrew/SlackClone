@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import channelRoutes from './routes/channels';
+import messageRoutes from './routes/messages';
 
 // Load environment variables
 dotenv.config();
@@ -25,6 +26,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/channels', channelRoutes);
+app.use('/api', messageRoutes); // This will handle both /messages and /channels/:channelId/messages
 
 // Basic health check route
 app.get('/health', (req, res) => {
@@ -46,6 +48,23 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
+  });
+
+  // Handle joining a channel
+  socket.on('join_channel', (channelId: string) => {
+    socket.join(`channel:${channelId}`);
+    console.log(`Socket ${socket.id} joined channel ${channelId}`);
+  });
+
+  // Handle leaving a channel
+  socket.on('leave_channel', (channelId: string) => {
+    socket.leave(`channel:${channelId}`);
+    console.log(`Socket ${socket.id} left channel ${channelId}`);
+  });
+
+  // Handle new messages
+  socket.on('new_message', (message: any) => {
+    io.to(`channel:${message.channel_id}`).emit('message_received', message);
   });
 });
 

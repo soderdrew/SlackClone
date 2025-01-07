@@ -4,6 +4,7 @@ import { LoginForm } from '../components/auth/LoginForm';
 import { RegisterForm } from '../components/auth/RegisterForm';
 import { EmailConfirmation } from '../components/auth/EmailConfirmation';
 import { MainLayout } from '../components/layouts/MainLayout';
+import { ChannelView } from '../components/channels/ChannelView';
 
 // Temporary Home component for testing
 function HomePage() {
@@ -69,9 +70,12 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '/',
-        element: <HomePage />,
+        element: <ChannelView />,
       },
-      // We'll add more protected routes here later
+      {
+        path: '/channels/:channelId',
+        element: <ChannelView />,
+      },
     ],
   },
 
