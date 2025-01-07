@@ -3,6 +3,29 @@ import { Channel, CreateChannelData } from '../types/channel';
 import { ChannelMember } from '../types/channel';
 import { supabase } from '../lib/supabase';
 
+interface RawChannelMember {
+  id: string;
+  user_id: string;
+  role: 'admin' | 'member';
+  profiles: {
+    id: string;
+    username: string;
+    full_name?: string;
+    avatar_url?: string;
+  };
+}
+
+interface MemberResponse {
+  user_id: string;
+  role: 'admin' | 'member';
+  profiles: {
+    id: string;
+    username: string;
+    full_name?: string;
+    avatar_url?: string;
+  };
+}
+
 class ChannelService {
   async createChannel(data: CreateChannelData): Promise<Channel> {
     const response = await api.post<Channel>('/channels', data);
@@ -63,8 +86,60 @@ class ChannelService {
   }
 
   async getChannelMembers(channelId: string): Promise<ChannelMember[]> {
-    const response = await api.get<ChannelMember[]>(`/channels/${channelId}/members`);
-    return response.data;
+    try {
+      // Get channel members with their profile information
+      const { data, error } = await supabase
+        .from('channel_members')
+        .select(`
+          user_id,
+          role,
+          profiles:user_id (
+            id,
+            username,
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('channel_id', channelId);
+
+      if (error) {
+        console.error('Error fetching channel members:', error);
+        throw error;
+      }
+
+      if (!data) return [];
+
+      console.log('Raw channel members data:', data);
+
+      // Transform the data to match our expected type
+      return data.map(member => {
+        // First cast to unknown, then to the expected type
+        const profile = (member.profiles as unknown) as {
+          id: string;
+          username: string;
+          full_name?: string;
+          avatar_url?: string;
+        };
+
+        return {
+          id: profile.id,
+          user_id: member.user_id,
+          role: member.role as 'admin' | 'member',
+          username: profile.username,
+          full_name: profile.full_name,
+          avatar_url: profile.avatar_url,
+          user: {
+            id: profile.id,
+            username: profile.username,
+            full_name: profile.full_name,
+            avatar_url: profile.avatar_url
+          }
+        };
+      });
+    } catch (error) {
+      console.error('Error in getChannelMembers:', error);
+      throw error;
+    }
   }
 
   async joinChannel(channelId: string): Promise<void> {

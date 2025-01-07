@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Message, SendMessageData } from '../../types/message';
 import { addMessage, setChannelMessages, setLoading } from '../../features/messages/messagesSlice';
-import { setCurrentChannel } from '../../features/channels/channelsSlice';
+import { setCurrentChannel, fetchChannelMembers, selectChannelMembers } from '../../features/channels/channelsSlice';
 import { messageService } from '../../services/messageService';
 import { channelService } from '../../services/channelService';
 import { realtimeService } from '../../services/realtimeService';
@@ -57,6 +57,7 @@ export function ChannelView() {
   const { channels, currentChannel } = useAppSelector((state) => state.channels);
   const { messages: messagesByChannel, isLoading } = useAppSelector((state) => state.messages);
   const { user } = useAppSelector((state) => state.auth);
+  const members = useAppSelector(state => selectChannelMembers(state, channelId || ''));
   
   // Local state for new message input
   const [newMessage, setNewMessage] = useState('');
@@ -293,6 +294,13 @@ export function ChannelView() {
     fetchOtherUser();
   }, [currentChannel?.type, currentChannel?.name, user?.id]);
 
+  // Add effect to fetch channel members
+  useEffect(() => {
+    if (channelId && currentChannel?.is_member) {
+      dispatch(fetchChannelMembers(channelId));
+    }
+  }, [channelId, currentChannel?.is_member, dispatch]);
+
   // Update the header rendering
   const renderHeader = () => {
     if (!currentChannel) return null;
@@ -355,7 +363,7 @@ export function ChannelView() {
                     className="h-4 w-4 text-gray-600 group-hover:text-gray-700"
                     aria-hidden="true"
                   />
-                  <span>{currentChannel.member_count} {currentChannel.member_count === 1 ? 'member' : 'members'}</span>
+                  <span>{members.length} {members.length === 1 ? 'member' : 'members'}</span>
                 </Popover.Button>
 
                 <Popover.Panel className="absolute right-0 z-10 mt-2 w-screen max-w-xs transform px-2">
@@ -364,10 +372,46 @@ export function ChannelView() {
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-medium text-gray-900">Channel Members</h3>
                         <span className="text-xs text-gray-500">
-                          {currentChannel.member_count} {currentChannel.member_count === 1 ? 'member' : 'members'}
+                          {members.length} {members.length === 1 ? 'member' : 'members'}
                         </span>
                       </div>
-                      {/* ... rest of the members list ... */}
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {members.map((member) => (
+                          <div
+                            key={member.id || member.user_id}
+                            className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+                              {member.user?.avatar_url ? (
+                                <img
+                                  src={member.user.avatar_url}
+                                  alt={member.user.username}
+                                  className="w-full h-full rounded-full"
+                                />
+                              ) : (
+                                <span className="text-sm text-gray-700">
+                                  {(member.user?.username?.[0] || '?').toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {member.user?.full_name || member.user?.username || 'Unknown User'}
+                              </p>
+                              {member.user?.username && (
+                                <p className="text-xs text-gray-500 truncate">
+                                  @{member.user.username}
+                                </p>
+                              )}
+                            </div>
+                            {member.role === 'admin' && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                Admin
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </Popover.Panel>
