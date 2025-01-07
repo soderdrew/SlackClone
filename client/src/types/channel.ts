@@ -14,7 +14,12 @@ export interface ChannelMember {
   full_name?: string;
   avatar_url?: string;
   role: 'admin' | 'member';
-  profiles?: ChannelMemberProfile;
+  user?: {
+    id: string;
+    username: string;
+    full_name?: string;
+    avatar_url?: string;
+  };
 }
 
 export interface Channel {

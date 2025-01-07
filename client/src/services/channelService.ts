@@ -19,14 +19,15 @@ class ChannelService {
       const { data: currentUser } = await supabase.auth.getUser();
       if (!currentUser.user) throw new Error('Not authenticated');
 
-      const { data: channels, error } = await supabase
+      // Fetch DM channels with all members in a single query
+      const { data: channels, error: membersError } = await supabase
         .from('channels')
         .select(`
           *,
           channel_members!inner (
             user_id,
             role,
-            profiles:user_id (
+            user:user_id (
               id,
               username,
               full_name,
@@ -37,7 +38,13 @@ class ChannelService {
         .eq('type', 'direct')
         .eq('channel_members.user_id', currentUser.user.id);
 
-      if (error) throw error;
+      if (membersError) {
+        console.error('Error details:', membersError);
+        throw membersError;
+      }
+      if (!channels) return [];
+      
+      console.log('Fetched DM channels:', channels);
       
       return channels.map(channel => ({
         ...channel,

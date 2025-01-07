@@ -23,32 +23,32 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
     }
   }, [channelId, dispatch]);
 
+  const getMemberDisplayName = (member: ChannelMember) => {
+    return member.user?.full_name || member.user?.username || member.username || 'Unknown User';
+  };
+
+  const getMemberUsername = (member: ChannelMember) => {
+    return member.user?.username || member.username || '';
+  };
+
   const renderMemberAvatar = (member: ChannelMember) => {
-    const avatarUrl = member.avatar_url || member.profiles?.avatar_url;
-    const username = member.username || member.profiles?.username || '';
+    const avatarUrl = member.user?.avatar_url || member.avatar_url;
+    const displayName = getMemberDisplayName(member);
 
     if (avatarUrl) {
       return (
         <img 
           src={avatarUrl} 
-          alt={username}
+          alt={displayName}
           className="w-8 h-8 rounded-full"
         />
       );
     }
     return (
       <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
-        {username[0]?.toUpperCase() || '?'}
+        {displayName[0]?.toUpperCase() || '?'}
       </div>
     );
-  };
-
-  const getMemberDisplayName = (member: ChannelMember) => {
-    return member.full_name || member.profiles?.full_name || member.username || member.profiles?.username || 'Unknown User';
-  };
-
-  const getMemberUsername = (member: ChannelMember) => {
-    return member.username || member.profiles?.username;
   };
 
   if (!channelName) return null;
