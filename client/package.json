@@ -12,6 +12,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.0",
+    "@heroicons/react": "^2.2.0",
     "@radix-ui/react-toast": "^1.2.4",
     "@reduxjs/toolkit": "^2.5.0",
     "@supabase/supabase-js": "^2.47.10",

@@ -11,23 +11,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const dispatch = useAppDispatch();
-  const { currentChannel, channelMembers } = useAppSelector((state) => state.channels);
-
-  // Fetch channel members when current channel changes
-  useEffect(() => {
-    async function fetchChannelMembers() {
-      if (!currentChannel?.id) return;
-      
-      try {
-        const members = await channelService.getChannelMembers(currentChannel.id);
-        dispatch(setChannelMembers({ channelId: currentChannel.id, members }));
-      } catch (error) {
-        console.error('Failed to fetch channel members:', error);
-      }
-    }
-
-    fetchChannelMembers();
-  }, [currentChannel?.id, dispatch]);
+  const { currentChannel } = useAppSelector((state) => state.channels);
 
   return (
     <div className="h-screen w-screen flex bg-white overflow-hidden">
@@ -39,9 +23,8 @@ export function MainLayout({ children }: MainLayoutProps) {
         {/* Header */}
         <Header 
           channelName={currentChannel?.name || ''}
-          memberCount={currentChannel?.member_count || 0}
+          channelId={currentChannel?.id || ''}
           topic={currentChannel?.description || ''}
-          members={channelMembers[currentChannel?.id || ''] || []}
         />
 
         {/* Content Area */}

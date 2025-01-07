@@ -1,7 +1,10 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
+import { Popover } from '@headlessui/react';
+import { UsersIcon } from '@heroicons/react/24/outline';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { fetchChannelMembers, selectChannelMembers, selectChannelMembersLoading } from '../../features/channels/channelsSlice';
 import { Button } from './Button';
 
-// First, let's define what a channel member looks like
 interface ChannelMember {
   id: string;
   username: string;
@@ -12,27 +15,41 @@ interface ChannelMember {
 
 interface HeaderProps {
   channelName: string;
-  memberCount: number;
+  channelId: string;
   topic?: string;
-  members: ChannelMember[];  // Add members to our props
 }
 
-export const Header: FC<HeaderProps> = ({ channelName, memberCount, topic, members }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
+  const dispatch = useAppDispatch();
+  const members = useAppSelector(state => selectChannelMembers(state, channelId));
+  const isLoadingMembers = useAppSelector(state => selectChannelMembersLoading(state, channelId));
 
-  // Helper function to render member avatar
+  useEffect(() => {
+    if (channelId) {
+      console.log('Fetching members for channel:', channelId);
+      dispatch(fetchChannelMembers(channelId))
+        .unwrap()
+        .then((result) => {
+          console.log('Successfully fetched members:', result);
+        })
+        .catch((error) => {
+          console.error('Failed to fetch members:', error);
+        });
+    }
+  }, [channelId, dispatch]);
+
   const renderMemberAvatar = (member: ChannelMember) => {
     if (member.avatar_url) {
       return (
         <img 
           src={member.avatar_url} 
           alt={member.username}
-          className="w-10 h-10 rounded-full"
+          className="w-8 h-8 rounded-full"
         />
       );
     }
     return (
-      <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
+      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
         {member.username[0].toUpperCase()}
       </div>
     );
@@ -41,77 +58,85 @@ export const Header: FC<HeaderProps> = ({ channelName, memberCount, topic, membe
   if (!channelName) return null;
 
   return (
-    <>
-      <header className="flex-shrink-0 border-b border-gray-200 bg-white px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-baseline space-x-4 min-w-0">
-            <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap">#{channelName}</h1>
-            {topic && (
-              <p className="text-base text-gray-600 truncate">{topic}</p>
-            )}
-          </div>
-          
-          <Button
-            variant="ghost"
-            onClick={() => setIsModalOpen(true)}
-            className="text-base text-gray-600 hover:bg-gray-100 transition-colors"
-          >
-            {memberCount} {memberCount === 1 ? 'member' : 'members'}
-          </Button>
+    <header className="flex-shrink-0 border-b border-gray-200 bg-white h-16">
+      <div className="flex items-center justify-between h-full px-6">
+        <div className="flex items-center space-x-4 min-w-0 flex-1">
+          <h1 className="text-xl font-semibold text-gray-900 whitespace-nowrap">#{channelName}</h1>
+          {topic && (
+            <div className="h-6 w-px bg-gray-300 mx-2" />
+          )}
+          {topic && (
+            <p className="text-sm text-gray-600 truncate">{topic}</p>
+          )}
         </div>
-      </header>
+        
+        <div className="flex items-center">
+          <Popover className="relative">
+            {({ open }) => (
+              <>
+                <Popover.Button
+                  className={`
+                    ${open ? 'bg-gray-50 border-gray-300' : 'border-gray-200'}
+                    group flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium
+                    bg-white border text-gray-800 hover:border-gray-300 hover:bg-gray-50 
+                    transition-colors duration-150 ease-in-out
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
+                >
+                  <UsersIcon
+                    className="h-4 w-4 text-gray-600 group-hover:text-gray-700"
+                    aria-hidden="true"
+                  />
+                  <span>{members.length} {members.length === 1 ? 'member' : 'members'}</span>
+                </Popover.Button>
 
-      {/* Members Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Channel Members</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </Button>
-            </div>
-            <div className="p-4 overflow-y-auto flex-1">
-              {members.length === 0 ? (
-                <p className="text-gray-500">No members found</p>
-              ) : (
-                <div className="space-y-4">
-                  {members.map((member) => (
-                    <div 
-                      key={member.id} 
-                      className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md"
-                    >
-                      {renderMemberAvatar(member)}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {member.full_name || member.username}
-                            </p>
-                            {member.full_name && (
-                              <p className="text-sm text-gray-500">@{member.username}</p>
-                            )}
+                <Popover.Panel className="absolute right-0 z-10 mt-2 w-screen max-w-xs transform px-2">
+                  <div className="overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5">
+                    <div className="relative bg-white p-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-medium text-gray-900">Channel Members</h3>
+                        <span className="text-xs text-gray-500">
+                          {members.length} {members.length === 1 ? 'member' : 'members'}
+                        </span>
+                      </div>
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {isLoadingMembers ? (
+                          <div className="flex items-center justify-center py-4">
+                            <div className="text-sm text-gray-500">Loading members...</div>
                           </div>
-                          {member.role === 'admin' && (
-                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                              Admin
-                            </span>
-                          )}
-                        </div>
+                        ) : members.length === 0 ? (
+                          <div className="text-sm text-gray-500 py-2">No members found</div>
+                        ) : (
+                          members.map((member) => (
+                            <div
+                              key={member.id}
+                              className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md"
+                            >
+                              {renderMemberAvatar(member)}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {member.full_name || member.username}
+                                </p>
+                                {member.full_name && (
+                                  <p className="text-xs text-gray-500 truncate">@{member.username}</p>
+                                )}
+                              </div>
+                              {member.role === 'admin' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                  Admin
+                                </span>
+                              )}
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+                  </div>
+                </Popover.Panel>
+              </>
+            )}
+          </Popover>
         </div>
-      )}
-    </>
+      </div>
+    </header>
   );
 }; 

@@ -2,6 +2,21 @@ import { Router, Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import { authenticateToken } from '../middleware/auth';
 
+interface Profile {
+  id: string;
+  username: string;
+  full_name?: string;
+  avatar_url?: string;
+}
+
+interface ChannelMember {
+  id: string;
+  username: string;
+  full_name?: string;
+  avatar_url?: string;
+  role: 'admin' | 'member';
+}
+
 const router = Router();
 
 // Get all channels
@@ -127,6 +142,73 @@ router.post('/', authenticateToken, async (req: Request, res: Response): Promise
     console.error('Channel creation error:', error);
     res.status(500).json({ 
       error: error.message || 'Failed to create channel' 
+    });
+  }
+});
+
+// Get channel members
+router.get('/:channelId/members', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { channelId } = req.params;
+    const userId = req.user?.id;
+
+    // First verify the user has access to this channel
+    const { data: membership } = await supabase
+      .from('channel_members')
+      .select('role')
+      .eq('channel_id', channelId)
+      .eq('user_id', userId)
+      .single();
+
+    const { data: channel } = await supabase
+      .from('channels')
+      .select('type')
+      .eq('id', channelId)
+      .single();
+
+    // Check if user can access the channel
+    if (!channel || (!membership && channel.type === 'private')) {
+      res.status(403).json({ error: 'You do not have access to this channel' });
+      return;
+    }
+
+    // Get channel members with user information
+    const { data, error } = await supabase
+      .from('channel_members')
+      .select(`
+        user_id,
+        role,
+        profiles:user_id (
+          id,
+          username,
+          full_name,
+          avatar_url
+        )
+      `)
+      .eq('channel_id', channelId);
+
+    if (error) throw error;
+
+    // Safely type and transform the data
+    const members = data as unknown as Array<{
+      role: 'admin' | 'member';
+      profiles: Profile;
+    }>;
+
+    // Format the response
+    const formattedMembers: ChannelMember[] = members?.map(member => ({
+      id: member.profiles.id,
+      username: member.profiles.username,
+      full_name: member.profiles.full_name,
+      avatar_url: member.profiles.avatar_url,
+      role: member.role
+    })) || [];
+
+    res.json(formattedMembers);
+  } catch (error: any) {
+    console.error('Error fetching channel members:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to fetch channel members' 
     });
   }
 });
