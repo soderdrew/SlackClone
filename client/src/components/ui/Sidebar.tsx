@@ -1,195 +1,166 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { Button } from './Button';
-import { channelService } from '../../services/channelService';
-import { setChannels, setLoading, setError } from '../../features/channels/channelsSlice';
-import { CreateChannelModal } from '../channels/CreateChannelModal';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAppSelector } from '../../hooks/redux';
 import { Channel } from '../../types/channel';
-import { ChevronDownIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
+import { StartDMModal } from '../messages/StartDMModal';
+
+interface DMChannel extends Channel {
+  displayName: string;
+  username: string;
+  avatar_url?: string;
+}
+
+// Add this function to process DM channels
+const processDMChannels = (channels: Channel[], currentUserId: string): DMChannel[] => {
+  return channels
+    .filter(channel => channel.type === 'direct')
+    .map(channel => {
+      // Get the other user's ID from the channel name
+      const otherUserId = channel.name.substring(3).split('-').find(id => id !== currentUserId);
+      
+      // Find the other user's info from channel members
+      const otherUserMember = channel.channel_members?.find(
+        member => member.user_id === otherUserId
+      );
+      
+      // Get the profile information from the member
+      const otherUserProfile = otherUserMember?.profiles;
+      
+      // For debugging
+      console.log('Processing DM channel:', {
+        channelName: channel.name,
+        otherUserId,
+        members: channel.channel_members,
+        otherUserMember,
+        profile: otherUserProfile
+      });
+
+      return {
+        ...channel,
+        displayName: otherUserProfile?.full_name || otherUserProfile?.username || 'Unknown User',
+        username: otherUserProfile?.username || '',
+        avatar_url: otherUserProfile?.avatar_url
+      };
+    });
+};
 
 export function Sidebar() {
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
-  const { channels = [], isLoading } = useAppSelector((state) => state.channels);
+  const { channels } = useAppSelector((state) => state.channels);
   const { user } = useAppSelector((state) => state.auth);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
   const [isDMsExpanded, setIsDMsExpanded] = useState(true);
+  const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
+  const [isStartDMModalOpen, setIsStartDMModalOpen] = useState(false);
+  const [isAddChannelModalOpen, setIsAddChannelModalOpen] = useState(false);
 
-  useEffect(() => {
-    async function fetchChannels() {
-      console.log('Starting to fetch channels...'); // Debug log
-      try {
-        dispatch(setLoading(true));
-        dispatch(setError(null));
-        console.log('Making API request to get channels...'); // Debug log
-        const fetchedChannels = await channelService.getChannels();
-        console.log('Raw API response:', fetchedChannels); // Debug log
-        
-        if (!fetchedChannels || !Array.isArray(fetchedChannels)) {
-          console.error('Fetched channels is not an array:', fetchedChannels);
-          dispatch(setChannels([]));
-          return;
-        }
-        
-        console.log('Number of channels fetched:', fetchedChannels.length); // Debug log
-        console.log('Channel details:', fetchedChannels); // Debug log
-        dispatch(setChannels(fetchedChannels));
-        
-        console.log('Current channels in state:', channels); // Debug log
-      } catch (error) {
-        console.error('Failed to fetch channels:', error);
-        if (error instanceof Error) {
-          console.error('Error details:', {
-            message: error.message,
-            stack: error.stack
-          });
-        }
-        dispatch(setError(error instanceof Error ? error.message : 'Failed to fetch channels'));
-        dispatch(setChannels([]));
-      } finally {
-        dispatch(setLoading(false));
-      }
-    }
-
-    fetchChannels();
-  }, [dispatch]);
-
-  const renderChannelList = () => {
-    if (!Array.isArray(channels)) {
-      console.error('Channels is not an array:', channels);
-      return null;
-    }
-
-    if (channels.length === 0) {
-      return (
-        <div className="text-gray-400 text-sm px-4">No channels available</div>
-      );
-    }
-
-    return (
-      <ul className="space-y-1">
-        {channels.map((channel: Channel) => (
-          <li key={channel.id}>
-            <Link
-              to={`/channels/${channel.id}`}
-              className="flex items-center px-4 py-1 text-gray-300 hover:bg-gray-800 rounded-md"
-            >
-              # {channel.name}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    );
-  };
+  // Separate regular channels and DMs
+  const regularChannels = channels.filter(channel => channel.type !== 'direct');
+  const dmChannels = user ? processDMChannels(channels, user.id) : [];
 
   return (
-    <div className="w-60 bg-gray-900 flex-shrink-0 h-full flex flex-col">
-      {/* Workspace Header */}
-      <div className="h-14 bg-gray-900 border-b border-gray-800 flex items-center px-4">
+    <div className="w-64 bg-gray-900 flex-shrink-0 h-full flex flex-col">
+      {/* Header */}
+      <div className="h-16 bg-gray-900 border-b border-gray-800 flex items-center px-4">
         <h1 className="text-white font-semibold text-lg">ChatGenius</h1>
       </div>
 
-      {/* User Info */}
-      <div className="px-4 py-2 border-b border-gray-800">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-            <span className="text-white text-sm">{user?.email?.[0].toUpperCase()}</span>
-          </div>
-          <span className="text-white text-sm">{user?.email}</span>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4">
-        {/* Channels Section */}
-        <div className="mb-6">
+      {/* Direct Messages Section */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-3 py-2">
           <button
-            onClick={() => setIsChannelsExpanded(!isChannelsExpanded)}
-            className="w-full px-4 mb-2 flex items-center justify-between group"
+            onClick={() => setIsDMsExpanded(!isDMsExpanded)}
+            className="flex items-center justify-between w-full text-gray-300 hover:text-white mb-1"
           >
-            <div className="flex items-center">
-              {isChannelsExpanded ? (
-                <ChevronDownIcon className="h-3 w-3 text-gray-400 mr-1" />
-              ) : (
-                <ChevronRightIcon className="h-3 w-3 text-gray-400 mr-1" />
-              )}
-              <h2 className="text-gray-400 text-sm font-medium">Channels</h2>
-            </div>
+            <span className="text-sm font-medium">Direct Messages</span>
+            <span className="text-gray-400">{isDMsExpanded ? '▼' : '▶'}</span>
           </button>
-          
-          {isChannelsExpanded && (
+          {isDMsExpanded && (
             <div className="space-y-1">
-              {isLoading ? (
-                <div className="text-gray-400 text-sm px-4">Loading channels...</div>
-              ) : (
-                <>
-                  {renderChannelList()}
-                  <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="flex items-center w-full px-4 py-1 text-gray-300 bg-gray-900 hover:bg-gray-800 hover:text-white transition-colors"
-                  >
-                    <span>+ Add Channel</span>
-                  </button>
-                </>
-              )}
+              <button
+                onClick={() => setIsStartDMModalOpen(true)}
+                className="flex items-center w-full px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Start a New Message
+              </button>
+              {dmChannels.map((dm) => (
+                <Link
+                  key={dm.id}
+                  to={`/channels/${dm.id}`}
+                  className={`
+                    flex items-center px-2 py-1 text-sm
+                    ${channels.find(c => c.id === dm.id)?.id === dm.id
+                      ? 'text-white bg-gray-800'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                    }
+                    rounded transition-colors
+                  `}
+                >
+                  <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center mr-2 flex-shrink-0">
+                    {dm.avatar_url ? (
+                      <img
+                        src={dm.avatar_url}
+                        alt={dm.displayName}
+                        className="w-full h-full rounded-full"
+                      />
+                    ) : (
+                      <span className="text-xs text-white">
+                        {dm.displayName[0].toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="truncate">{dm.displayName}</span>
+                </Link>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Direct Messages Section */}
-        <div>
+        {/* Regular Channels Section */}
+        <div className="px-3 py-2">
           <button
-            onClick={() => setIsDMsExpanded(!isDMsExpanded)}
-            className="w-full px-4 mb-2 flex items-center justify-between group"
+            onClick={() => setIsChannelsExpanded(!isChannelsExpanded)}
+            className="flex items-center justify-between w-full text-gray-300 hover:text-white mb-1"
           >
-            <div className="flex items-center">
-              {isDMsExpanded ? (
-                <ChevronDownIcon className="h-3 w-3 text-gray-400 mr-1" />
-              ) : (
-                <ChevronRightIcon className="h-3 w-3 text-gray-400 mr-1" />
-              )}
-              <h2 className="text-gray-400 text-sm font-medium">Direct Messages</h2>
-            </div>
+            <span className="text-sm font-medium">Channels</span>
+            <span className="text-gray-400">{isChannelsExpanded ? '▼' : '▶'}</span>
           </button>
-
-          {isDMsExpanded && (
+          {isChannelsExpanded && (
             <div className="space-y-1">
-              <div className="space-y-1">
+              {regularChannels.map((channel) => (
                 <Link
-                  to="/dm/john-doe"
-                  className="flex items-center px-4 py-1 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                  key={channel.id}
+                  to={`/channels/${channel.id}`}
+                  className={`
+                    flex items-center px-2 py-1 text-sm
+                    ${channels.find(c => c.id === channel.id)?.id === channel.id
+                      ? 'text-white bg-gray-800'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                    }
+                    rounded transition-colors
+                  `}
                 >
-                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                  John Doe
+                  <span className="mr-1">#</span>
+                  <span className="truncate">{channel.name}</span>
                 </Link>
-                <Link
-                  to="/dm/jane-smith"
-                  className="flex items-center px-4 py-1 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-                >
-                  <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
-                  Jane Smith
-                </Link>
-              </div>
+              ))}
               <button
-                onClick={() => console.log('Start new message clicked')}
-                className="flex items-center w-full px-4 py-1 text-gray-300 bg-gray-900 hover:bg-gray-800 hover:text-white transition-colors"
+                onClick={() => setIsAddChannelModalOpen(true)}
+                className="flex items-center w-full px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded"
               >
-                <span>+ Start a New Message</span>
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add Channel
               </button>
             </div>
           )}
         </div>
-      </nav>
+      </div>
 
-      {/* Create Channel Modal */}
-      {isCreateModalOpen && (
-        <CreateChannelModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-        />
-      )}
+      {/* Modals */}
+      <StartDMModal
+        isOpen={isStartDMModalOpen}
+        onClose={() => setIsStartDMModalOpen(false)}
+      />
     </div>
   );
 } 

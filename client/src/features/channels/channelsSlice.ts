@@ -3,6 +3,30 @@ import { Channel } from '../../types/channel';
 import { ChannelMember } from '../../types/channel';
 import { channelService } from '../../services/channelService';
 
+// Async thunk for fetching channels
+export const fetchChannels = createAsyncThunk(
+  'channels/fetchChannels',
+  async (_, { dispatch }) => {
+    try {
+      dispatch(setLoading(true));
+      dispatch(setError(null));
+      const [channels, dmChannels] = await Promise.all([
+        channelService.getChannels(),
+        channelService.getDMChannels()
+      ]);
+      const allChannels = [...channels, ...dmChannels];
+      dispatch(setChannels(allChannels));
+      return allChannels;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch channels';
+      dispatch(setError(errorMessage));
+      return [];
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }
+);
+
 // Async thunk for fetching channel members
 export const fetchChannelMembers = createAsyncThunk(
   'channels/fetchMembers',
@@ -72,7 +96,7 @@ const channelsSlice = createSlice({
       if (!state.channelMembers[channelId]) {
         state.channelMembers[channelId] = [];
       }
-      if (!state.channelMembers[channelId].some(m => m.id === member.id)) {
+      if (!state.channelMembers[channelId].some((m: ChannelMember) => m.id === member.id)) {
         state.channelMembers[channelId].push(member);
       }
     },
@@ -83,7 +107,7 @@ const channelsSlice = createSlice({
       const { channelId, memberId } = action.payload;
       if (state.channelMembers[channelId]) {
         state.channelMembers[channelId] = state.channelMembers[channelId]
-          .filter(member => member.id !== memberId);
+          .filter((member: ChannelMember) => member.id !== memberId);
       }
     },
     setMemberLoading(

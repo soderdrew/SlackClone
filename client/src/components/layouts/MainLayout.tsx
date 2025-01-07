@@ -1,10 +1,9 @@
 import { ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../ui/Sidebar';
-import { Header } from '../ui/Header';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { channelService } from '../../services/channelService';
-import { setChannelMembers } from '../../features/channels/channelsSlice';
+import { setChannelMembers, fetchChannels } from '../../features/channels/channelsSlice';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -14,6 +13,11 @@ export function MainLayout({ children }: MainLayoutProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { currentChannel, channels } = useAppSelector((state) => state.channels);
+
+  // Fetch channels on mount
+  useEffect(() => {
+    dispatch(fetchChannels());
+  }, [dispatch]);
 
   // Auto-select general channel on initial load
   useEffect(() => {
@@ -32,13 +36,6 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 w-full">
-        {/* Header */}
-        <Header 
-          channelName={currentChannel?.name || ''}
-          channelId={currentChannel?.id || ''}
-          topic={currentChannel?.description || 'No description set'}
-        />
-
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto w-full">
           {children}

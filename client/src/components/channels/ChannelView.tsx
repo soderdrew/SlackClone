@@ -12,6 +12,43 @@ import { realtimeService } from '../../services/realtimeService';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageContent } from '../messages/MessageContent';
 import { MessageActions } from '../messages/MessageActions';
+import { userService } from '../../services/userService';
+import { Popover } from '@headlessui/react';
+import { UsersIcon } from '@heroicons/react/24/outline';
+
+interface DMUser {
+  id: string;
+  username: string;
+  full_name?: string;
+  avatar_url?: string;
+}
+
+const getOtherUserIdFromDMChannel = (channelName: string, currentUserId: string): string | null => {
+  if (!channelName.startsWith('dm-')) return null;
+  
+  try {
+    // Remove the 'dm-' prefix
+    const channelNameWithoutPrefix = channelName.substring(3);
+    
+    // Find the position of the second UUID by looking for the pattern of hyphens
+    const uuidLength = 36; // Standard UUID length
+    const firstUuid = channelNameWithoutPrefix.substring(0, uuidLength);
+    const secondUuid = channelNameWithoutPrefix.substring(uuidLength + 1); // +1 for the separator hyphen
+    
+    // Validate both UUIDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(firstUuid) || !uuidRegex.test(secondUuid)) {
+      console.error('Invalid UUID format in channel name:', channelName);
+      return null;
+    }
+
+    // Return the UUID that isn't the current user's
+    return firstUuid === currentUserId ? secondUuid : firstUuid;
+  } catch (error) {
+    console.error('Error parsing DM channel name:', error);
+    return null;
+  }
+};
 
 export function ChannelView() {
   // Redux state and dispatch
@@ -25,6 +62,7 @@ export function ChannelView() {
   const [newMessage, setNewMessage] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [otherUser, setOtherUser] = useState<DMUser | null>(null);
   
   // Ref for message container to auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -235,6 +273,112 @@ export function ChannelView() {
     };
   }, [currentChannel?.id, currentChannel?.is_member]);
 
+  // Update the effect that fetches the other user's info
+  useEffect(() => {
+    async function fetchOtherUser() {
+      if (!currentChannel || !user?.id) return;
+      if (currentChannel.type !== 'direct' || !currentChannel.name) return;
+      
+      const otherUserId = getOtherUserIdFromDMChannel(currentChannel.name, user.id);
+      if (!otherUserId) return;
+
+      try {
+        const userData = await userService.getUserById(otherUserId);
+        setOtherUser(userData);
+      } catch (error) {
+        console.error('Failed to fetch other user:', error);
+      }
+    }
+
+    fetchOtherUser();
+  }, [currentChannel?.type, currentChannel?.name, user?.id]);
+
+  // Update the header rendering
+  const renderHeader = () => {
+    if (!currentChannel) return null;
+
+    if (currentChannel.type === 'direct') {
+      return (
+        <div className="flex items-center min-w-0 flex-1 h-full px-6">
+          <div className="flex items-center">
+            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+              {otherUser?.avatar_url ? (
+                <img
+                  src={otherUser.avatar_url}
+                  alt={otherUser.username}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <span className="text-gray-600 text-lg font-medium">
+                  {(otherUser?.username?.[0] || '?').toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-lg font-semibold text-gray-900 leading-tight">
+                {otherUser?.full_name || otherUser?.username || 'Unknown User'}
+              </h1>
+              {otherUser?.username && (
+                <p className="text-sm text-gray-500 leading-tight">@{otherUser.username}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center justify-between h-full px-6">
+        <div className="flex items-center min-w-0 flex-1">
+          <div className="flex items-center">
+            <h1 className="text-xl font-semibold text-gray-900 mr-4">#{currentChannel.name}</h1>
+            <div className="h-6 w-px bg-gray-300 mx-4" />
+            <p className="text-sm text-gray-600 truncate max-w-2xl">
+              {currentChannel.description || 'No description set'}
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex items-center ml-4">
+          <Popover className="relative">
+            {({ open }) => (
+              <>
+                <Popover.Button
+                  className={`
+                    ${open ? 'bg-gray-50 border-gray-300' : 'border-gray-200'}
+                    group flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium
+                    bg-white border text-gray-800 hover:border-gray-300 hover:bg-gray-50 
+                    transition-colors duration-150 ease-in-out
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
+                >
+                  <UsersIcon
+                    className="h-4 w-4 text-gray-600 group-hover:text-gray-700"
+                    aria-hidden="true"
+                  />
+                  <span>{currentChannel.member_count} {currentChannel.member_count === 1 ? 'member' : 'members'}</span>
+                </Popover.Button>
+
+                <Popover.Panel className="absolute right-0 z-10 mt-2 w-screen max-w-xs transform px-2">
+                  <div className="overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5">
+                    <div className="relative bg-white p-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-medium text-gray-900">Channel Members</h3>
+                        <span className="text-xs text-gray-500">
+                          {currentChannel.member_count} {currentChannel.member_count === 1 ? 'member' : 'members'}
+                        </span>
+                      </div>
+                      {/* ... rest of the members list ... */}
+                    </div>
+                  </div>
+                </Popover.Panel>
+              </>
+            )}
+          </Popover>
+        </div>
+      </div>
+    );
+  };
+
   if (!currentChannel) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50">
@@ -281,6 +425,11 @@ export function ChannelView() {
 
   return (
     <div className="flex-1 flex flex-col h-full">
+      {/* Header */}
+      <header className="flex-shrink-0 border-b border-gray-200 bg-white h-16">
+        {renderHeader()}
+      </header>
+
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-6">
         {isLoading ? (
@@ -311,7 +460,10 @@ export function ChannelView() {
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder={`Message #${currentChannel.name}`}
+                placeholder={currentChannel?.type === 'direct' 
+                  ? `Message ${otherUser?.full_name || otherUser?.username || 'User'}`
+                  : `Message #${currentChannel?.name}`
+                }
                 className="w-full"
               />
             </div>

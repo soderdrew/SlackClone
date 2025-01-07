@@ -1,17 +1,10 @@
-import { FC, useState, useEffect } from 'react';
+import { FC, useEffect } from 'react';
 import { Popover } from '@headlessui/react';
 import { UsersIcon } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchChannelMembers, selectChannelMembers, selectChannelMembersLoading } from '../../features/channels/channelsSlice';
 import { Button } from './Button';
-
-interface ChannelMember {
-  id: string;
-  username: string;
-  full_name?: string;
-  avatar_url?: string;
-  role: 'admin' | 'member';
-}
+import { ChannelMember } from '../../types/channel';
 
 interface HeaderProps {
   channelName: string;
@@ -26,33 +19,36 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
 
   useEffect(() => {
     if (channelId) {
-      console.log('Fetching members for channel:', channelId);
-      dispatch(fetchChannelMembers(channelId))
-        .unwrap()
-        .then((result) => {
-          console.log('Successfully fetched members:', result);
-        })
-        .catch((error) => {
-          console.error('Failed to fetch members:', error);
-        });
+      dispatch(fetchChannelMembers(channelId));
     }
   }, [channelId, dispatch]);
 
   const renderMemberAvatar = (member: ChannelMember) => {
-    if (member.avatar_url) {
+    const avatarUrl = member.avatar_url || member.profiles?.avatar_url;
+    const username = member.username || member.profiles?.username || '';
+
+    if (avatarUrl) {
       return (
         <img 
-          src={member.avatar_url} 
-          alt={member.username}
+          src={avatarUrl} 
+          alt={username}
           className="w-8 h-8 rounded-full"
         />
       );
     }
     return (
       <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
-        {member.username[0].toUpperCase()}
+        {username[0]?.toUpperCase() || '?'}
       </div>
     );
+  };
+
+  const getMemberDisplayName = (member: ChannelMember) => {
+    return member.full_name || member.profiles?.full_name || member.username || member.profiles?.username || 'Unknown User';
+  };
+
+  const getMemberUsername = (member: ChannelMember) => {
+    return member.username || member.profiles?.username;
   };
 
   if (!channelName) return null;
@@ -108,16 +104,16 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
                         ) : (
                           members.map((member) => (
                             <div
-                              key={member.id}
+                              key={member.id || member.user_id}
                               className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md"
                             >
                               {renderMemberAvatar(member)}
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900 truncate">
-                                  {member.full_name || member.username}
+                                  {getMemberDisplayName(member)}
                                 </p>
-                                {member.full_name && (
-                                  <p className="text-xs text-gray-500 truncate">@{member.username}</p>
+                                {getMemberUsername(member) && (
+                                  <p className="text-xs text-gray-500 truncate">@{getMemberUsername(member)}</p>
                                 )}
                               </div>
                               {member.role === 'admin' && (

@@ -1,22 +1,32 @@
 export type ChannelType = 'public' | 'private' | 'direct';
 
-export interface Channel {
-  id: string;
-  name: string;
-  description?: string;
-  type: ChannelType;
-  created_at: string;
-  created_by: string;
-  member_count: number;
-  is_member?: boolean;
-}
-
-export interface ChannelMember {
+interface ChannelMemberProfile {
   id: string;
   username: string;
   full_name?: string;
   avatar_url?: string;
+}
+
+export interface ChannelMember {
+  id?: string;
+  user_id: string;
+  username?: string;
+  full_name?: string;
+  avatar_url?: string;
   role: 'admin' | 'member';
+  profiles?: ChannelMemberProfile;
+}
+
+export interface Channel {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'public' | 'private' | 'direct';
+  created_by: string;
+  created_at: string;
+  is_member?: boolean;
+  member_count?: number;
+  channel_members?: ChannelMember[];
 }
 
 export interface CreateChannelData {
