@@ -132,49 +132,64 @@ router.post('/update-password', async (req, res) => {
 // After successful registration, add user to default channels
 const addToDefaultChannels = async (userId: string) => {
   try {
-    // Get default channels (general and random)
-    const { data: defaultChannels } = await supabase
+    // Get the general channel
+    const { data: generalChannel } = await supabase
       .from('channels')
       .select('id, name')
-      .in('name', ['general', 'random']);
+      .eq('name', 'general')
+      .single();
 
-    if (!defaultChannels?.length) return;
+    if (!generalChannel) {
+      console.error('General channel not found');
+      return;
+    }
 
-    // Add user to each default channel
-    for (const channel of defaultChannels) {
-      const { error: memberError } = await supabase
-        .from('channel_members')
-        .insert([
-          {
-            channel_id: channel.id,
-            user_id: userId,
-            role: 'member'
-          }
-        ]);
+    // Check if already a member
+    const { data: existingMembership } = await supabase
+      .from('channel_members')
+      .select('id')
+      .eq('channel_id', generalChannel.id)
+      .eq('user_id', userId)
+      .single();
 
-      if (memberError) {
-        console.error(`Error adding user to channel ${channel.id}:`, memberError);
-        continue;
-      }
+    if (existingMembership) {
+      console.log('User already a member of general channel');
+      return;
+    }
 
-      // Add welcome message
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert([
-          {
-            channel_id: channel.id,
-            user_id: userId,
-            content: `<@${userId}> joined #${channel.name}`,
-            is_system_message: true
-          }
-        ]);
+    // Add user to general channel
+    const { error: memberError } = await supabase
+      .from('channel_members')
+      .insert([
+        {
+          channel_id: generalChannel.id,
+          user_id: userId,
+          role: 'member'
+        }
+      ]);
 
-      if (messageError) {
-        console.error(`Error creating welcome message in channel ${channel.id}:`, messageError);
-      }
+    if (memberError) {
+      console.error('Error adding user to general channel:', memberError);
+      return;
+    }
+
+    // Add welcome message
+    const { error: messageError } = await supabase
+      .from('messages')
+      .insert([
+        {
+          channel_id: generalChannel.id,
+          user_id: userId,
+          content: `<@${userId}> joined #${generalChannel.name}`,
+          type: 'system'
+        }
+      ]);
+
+    if (messageError) {
+      console.error('Error creating welcome message:', messageError);
     }
   } catch (error) {
-    console.error('Error adding user to default channels:', error);
+    console.error('Error adding user to general channel:', error);
   }
 };
 

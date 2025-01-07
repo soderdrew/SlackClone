@@ -60,17 +60,17 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
   return (
     <header className="flex-shrink-0 border-b border-gray-200 bg-white h-16">
       <div className="flex items-center justify-between h-full px-6">
-        <div className="flex items-center space-x-4 min-w-0 flex-1">
-          <h1 className="text-xl font-semibold text-gray-900 whitespace-nowrap">#{channelName}</h1>
-          {topic && (
-            <div className="h-6 w-px bg-gray-300 mx-2" />
-          )}
-          {topic && (
-            <p className="text-sm text-gray-600 truncate">{topic}</p>
-          )}
+        <div className="flex items-center min-w-0 flex-1">
+          <div className="flex items-center">
+            <h1 className="text-xl font-semibold text-gray-900 mr-4">#{channelName}</h1>
+            <div className="h-6 w-px bg-gray-300 mx-4" />
+            <p className="text-sm text-gray-600 truncate max-w-2xl">
+              {topic || 'No description set'}
+            </p>
+          </div>
         </div>
         
-        <div className="flex items-center">
+        <div className="flex items-center ml-4">
           <Popover className="relative">
             {({ open }) => (
               <>

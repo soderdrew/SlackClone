@@ -245,7 +245,8 @@ router.post('/:channelId/join', authenticateToken, async (req: Request, res: Res
       .single();
 
     if (existingMembership) {
-      res.status(400).json({ error: 'Already a member of this channel' });
+      // If already a member, just return success
+      res.status(200).json({ message: 'Already a member of this channel' });
       return;
     }
 
@@ -270,7 +271,7 @@ router.post('/:channelId/join', authenticateToken, async (req: Request, res: Res
           channel_id: channelId,
           user_id: userId,
           content: `<@${userId}> joined the channel`,
-          is_system_message: true
+          type: 'system' // Using type instead of is_system_message
         }
       ]);
 

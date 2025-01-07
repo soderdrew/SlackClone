@@ -1,4 +1,5 @@
 import { ReactNode, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../ui/Sidebar';
 import { Header } from '../ui/Header';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
@@ -11,7 +12,18 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const dispatch = useAppDispatch();
-  const { currentChannel } = useAppSelector((state) => state.channels);
+  const navigate = useNavigate();
+  const { currentChannel, channels } = useAppSelector((state) => state.channels);
+
+  // Auto-select general channel on initial load
+  useEffect(() => {
+    if (!currentChannel && channels.length > 0) {
+      const generalChannel = channels.find(channel => channel.name === 'general');
+      if (generalChannel) {
+        navigate(`/channels/${generalChannel.id}`);
+      }
+    }
+  }, [currentChannel, channels, navigate]);
 
   return (
     <div className="h-screen w-screen flex bg-white overflow-hidden">
@@ -24,7 +36,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         <Header 
           channelName={currentChannel?.name || ''}
           channelId={currentChannel?.id || ''}
-          topic={currentChannel?.description || ''}
+          topic={currentChannel?.description || 'No description set'}
         />
 
         {/* Content Area */}

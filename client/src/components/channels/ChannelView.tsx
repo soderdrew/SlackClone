@@ -144,9 +144,11 @@ export function ChannelView() {
     try {
       setIsJoining(true);
       await channelService.joinChannel(currentChannel.id);
-      // Refresh the channel to update is_member status
+      // Always refresh the channel state after attempting to join
       const updatedChannel = await channelService.getChannel(currentChannel.id);
-      dispatch(setCurrentChannel(updatedChannel));
+      if (updatedChannel) {
+        dispatch(setCurrentChannel(updatedChannel));
+      }
     } catch (error) {
       console.error('Failed to join channel:', error);
     } finally {
@@ -154,10 +156,47 @@ export function ChannelView() {
     }
   };
 
+  // Auto-join general channel when viewed
+  useEffect(() => {
+    async function autoJoinGeneralChannel() {
+      if (
+        currentChannel?.name === 'general' &&
+        !currentChannel.is_member &&
+        currentChannel.type === 'public'
+      ) {
+        try {
+          setIsJoining(true);
+          const response = await channelService.joinChannel(currentChannel.id);
+          
+          // Always refresh the channel state, even if we were already a member
+          const updatedChannel = await channelService.getChannel(currentChannel.id);
+          if (updatedChannel) {
+            dispatch(setCurrentChannel(updatedChannel));
+          }
+        } catch (error) {
+          console.error('Failed to auto-join general channel:', error);
+        } finally {
+          setIsJoining(false);
+        }
+      }
+    }
+
+    if (currentChannel?.name === 'general') {
+      autoJoinGeneralChannel();
+    }
+  }, [currentChannel?.id, currentChannel?.name, currentChannel?.type, dispatch]);
+
   if (!currentChannel) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-gray-500">Select a channel to start chatting</p>
+      <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50">
+        <div className="text-center max-w-md">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+            Welcome to ChatGenius! 👋
+          </h2>
+          <p className="text-gray-600">
+            You'll be automatically connected to the #general channel in a moment.
+          </p>
+        </div>
       </div>
     );
   }
@@ -170,17 +209,22 @@ export function ChannelView() {
           <h2 className="text-2xl font-semibold text-gray-900 mb-2">
             Welcome to #{currentChannel.name}
           </h2>
-          <p className="text-gray-600 mb-6">
-            This is the beginning of the {currentChannel.name} channel.
-            {currentChannel.description && ` ${currentChannel.description}`}
+          <p className="text-gray-600 mb-4">
+            {currentChannel.description || `This is the beginning of the ${currentChannel.name} channel.`}
           </p>
-          <Button
-            onClick={handleJoinChannel}
-            disabled={isJoining}
-            className="w-full"
-          >
-            {isJoining ? 'Joining...' : 'Join Channel'}
-          </Button>
+          {currentChannel.name === 'general' ? (
+            <div className="text-sm text-gray-500 mb-4">
+              <div className="animate-pulse">Joining channel...</div>
+            </div>
+          ) : (
+            <Button
+              onClick={handleJoinChannel}
+              disabled={isJoining}
+              className="w-full justify-center"
+            >
+              {isJoining ? 'Joining...' : 'Join Channel'}
+            </Button>
+          )}
         </div>
       </div>
     );
