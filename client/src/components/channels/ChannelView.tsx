@@ -8,7 +8,10 @@ import { addMessage, setChannelMessages, setLoading } from '../../features/messa
 import { setCurrentChannel } from '../../features/channels/channelsSlice';
 import { messageService } from '../../services/messageService';
 import { channelService } from '../../services/channelService';
+import { realtimeService } from '../../services/realtimeService';
 import { formatDistanceToNow } from 'date-fns';
+import { MessageContent } from '../messages/MessageContent';
+import { MessageActions } from '../messages/MessageActions';
 
 export function ChannelView() {
   // Redux state and dispatch
@@ -21,6 +24,7 @@ export function ChannelView() {
   // Local state for new message input
   const [newMessage, setNewMessage] = useState('');
   const [isJoining, setIsJoining] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   
   // Ref for message container to auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -98,18 +102,23 @@ export function ChannelView() {
   const renderMessageGroup = (message: Message, index: number) => {
     const prevMessage = index > 0 ? currentMessages[index - 1] : null;
     const isFirstInGroup = !prevMessage || prevMessage.user_id !== message.user_id;
+    const isEditing = editingMessageId === message.id;
+    
+    // Get the display name and initial safely
+    const displayName = message.user?.full_name || message.user?.username || 'Unknown User';
+    const userInitial = (message.user?.username?.[0] || 'U').toUpperCase();
     
     return (
       <div 
         key={message.id} 
-        className={`flex items-start ${isFirstInGroup ? 'mt-6' : 'mt-1'}`}
+        className={`flex items-start ${isFirstInGroup ? 'mt-4' : 'mt-0.5'}`}
       >
         <div className="flex min-w-0 w-full">
           {/* Avatar column - fixed width */}
           <div className="w-[50px] flex-shrink-0">
             {isFirstInGroup && (
               <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
-                {message.user.username[0].toUpperCase()}
+                {userInitial}
               </div>
             )}
           </div>
@@ -117,20 +126,47 @@ export function ChannelView() {
           {/* Message content - flexible width */}
           <div className="flex-1 min-w-0">
             {isFirstInGroup && (
-              <div className="flex items-baseline">
-                <span className="font-medium text-gray-900">{message.user.full_name || message.user.username}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">{displayName}</span>
+                <span className="text-xs text-gray-500">
+                  {formatMessageTime(message.created_at)}
+                </span>
               </div>
             )}
-            <div className="flex justify-between items-baseline group">
-              <div className="text-gray-900 break-words">
-                {message.content}
-                {message.is_edited && (
-                  <span className="text-xs text-gray-500 ml-2">(edited)</span>
-                )}
-              </div>
-              <span className="text-xs text-gray-500 ml-4 whitespace-nowrap">
-                {formatMessageTime(message.created_at)}
-              </span>
+            <div className="group">
+              {isEditing ? (
+                <MessageActions
+                  message={message}
+                  currentUserId={user?.id || ''}
+                  isEditing={true}
+                  onStartEdit={() => setEditingMessageId(message.id)}
+                  onFinishEdit={() => setEditingMessageId(null)}
+                />
+              ) : (
+                <>
+                  <div className="flex justify-between items-start group pr-4">
+                    <div className="text-gray-900 break-words flex-1 mr-4">
+                      <MessageContent content={message.content} />
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {message.is_edited && (
+                        <span className="text-xs text-gray-500">
+                          (edited)
+                        </span>
+                      )}
+                      {!isEditing && (
+                        <MessageActions
+                          message={message}
+                          currentUserId={user?.id || ''}
+                          isEditing={false}
+                          onStartEdit={() => setEditingMessageId(message.id)}
+                          onFinishEdit={() => setEditingMessageId(null)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -185,6 +221,19 @@ export function ChannelView() {
       autoJoinGeneralChannel();
     }
   }, [currentChannel?.id, currentChannel?.name, currentChannel?.type, dispatch]);
+
+  // Subscribe to real-time updates when channel changes
+  useEffect(() => {
+    if (!currentChannel?.id || !currentChannel.is_member) return;
+
+    // Subscribe to real-time updates
+    realtimeService.subscribeToChannelMessages(currentChannel.id);
+
+    // Cleanup subscription when component unmounts or channel changes
+    return () => {
+      realtimeService.unsubscribeFromChannelMessages(currentChannel.id);
+    };
+  }, [currentChannel?.id, currentChannel?.is_member]);
 
   if (!currentChannel) {
     return (
