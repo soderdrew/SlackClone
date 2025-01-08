@@ -121,28 +121,41 @@ class MessageService {
     return data as unknown as Message;
   }
 
-  async updateMessage(messageId: string, content: string): Promise<Message> {
+  async updateMessage(messageId: string, content: string, removeFile: boolean = false): Promise<Message> {
+    const updateData: any = { 
+      content, 
+      is_edited: true 
+    };
+
+    if (removeFile) {
+      // Get the current message to find the file path
+      const { data: message } = await supabase
+        .from('messages')
+        .select('file_attachment')
+        .eq('id', messageId)
+        .single();
+
+      if (message?.file_attachment?.path) {
+        // Delete the file from storage
+        await fileService.deleteFile(message.file_attachment.path);
+      }
+      
+      // Set file_attachment to null in the message
+      updateData.file_attachment = null;
+    }
+
     const { data, error } = await supabase
       .from('messages')
-      .update({ content, is_edited: true })
+      .update(updateData)
       .eq('id', messageId)
-      .select(`
-        id,
-        content,
-        channel_id,
-        user_id,
-        created_at,
-        updated_at,
-        is_edited,
-        file_attachment,
-        user:profiles (
-          ${this.userProfileFields}
-        )
-      `)
+      .select('*, user:profiles(*)')
       .single();
 
-    if (error) throw error;
-    return data as unknown as Message;
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   async deleteMessage(messageId: string): Promise<void> {

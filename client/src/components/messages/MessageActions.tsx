@@ -6,6 +6,7 @@ import { Tooltip } from '../ui/Tooltip';
 import { messageService } from '../../services/messageService';
 import { useAppDispatch } from '../../hooks/redux';
 import { updateMessage, deleteMessage } from '../../features/messages/messagesSlice';
+import { DocumentIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface MessageActionsProps {
   message: Message;
@@ -64,24 +65,35 @@ export function MessageActions({
   const [editedContent, setEditedContent] = useState(message.content);
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [fileRemoved, setFileRemoved] = useState(false);
 
   const isOwner = message.user_id === currentUserId;
 
   const handleEdit = async () => {
     if (!isEditing) {
       setEditedContent(message.content);
+      setFileRemoved(false);
       onStartEdit();
       return;
     }
 
-    if (editedContent.trim() === message.content) {
+    if (!editedContent.trim() && fileRemoved) {
+      handleDelete();
+      return;
+    }
+
+    if (editedContent.trim() === message.content && !fileRemoved) {
       onFinishEdit();
       return;
     }
 
     try {
       setIsLoading(true);
-      const updatedMessage = await messageService.updateMessage(message.id, editedContent.trim());
+      const updatedMessage = await messageService.updateMessage(
+        message.id, 
+        editedContent.trim(),
+        fileRemoved
+      );
       dispatch(updateMessage(updatedMessage));
       onFinishEdit();
     } catch (error) {
@@ -125,13 +137,31 @@ export function MessageActions({
           onKeyDown={handleKeyDown}
           disabled={isLoading}
           className="w-full"
+          placeholder="Add a message or remove the file..."
           autoFocus
         />
+        {message.file_attachment && !fileRemoved && (
+          <div className="mt-2 flex items-center gap-2 bg-gray-100 text-gray-700 px-2 py-1 rounded-md text-sm w-fit">
+            {message.file_attachment.mimeType.startsWith('image/') ? (
+              <PhotoIcon className="h-4 w-4" />
+            ) : (
+              <DocumentIcon className="h-4 w-4" />
+            )}
+            <span className="max-w-[200px] truncate">{message.file_attachment.filename}</span>
+            <button
+              onClick={() => setFileRemoved(true)}
+              className="bg-white hover:bg-gray-200 rounded-full p-0.5 shadow-sm border border-gray-200"
+              title="Remove file"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <div className="flex gap-2 mt-2">
           <Button
             size="sm"
             onClick={handleEdit}
-            disabled={isLoading || editedContent.trim() === message.content}
+            disabled={isLoading || (editedContent.trim() === message.content && !fileRemoved) || (!editedContent.trim() && fileRemoved)}
           >
             {isLoading ? 'Saving...' : 'Save'}
           </Button>
@@ -141,6 +171,7 @@ export function MessageActions({
             onClick={() => {
               onFinishEdit();
               setEditedContent(message.content);
+              setFileRemoved(false);
             }}
             disabled={isLoading}
           >
