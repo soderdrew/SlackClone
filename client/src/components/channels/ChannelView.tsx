@@ -12,6 +12,7 @@ import { realtimeService } from '../../services/realtimeService';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageContent } from '../messages/MessageContent';
 import { MessageActions } from '../messages/MessageActions';
+import { FileAttachmentPreview } from '../messages/FileAttachmentPreview';
 import { userService } from '../../services/userService';
 import { Popover } from '@headlessui/react';
 import { UsersIcon } from '@heroicons/react/24/outline';
@@ -260,6 +261,9 @@ export function ChannelView() {
                   <div className="flex justify-between items-start group pr-4">
                     <div className="text-gray-900 break-words flex-1 mr-4">
                       <MessageContent content={message.content} />
+                      {message.file_attachment && (
+                        <FileAttachmentPreview attachment={message.file_attachment} />
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {message.is_edited && (

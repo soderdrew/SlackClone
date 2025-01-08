@@ -1,3 +1,11 @@
+export interface FileAttachment {
+  path: string;
+  filename: string;
+  size: number;
+  mimeType: string;
+  url?: string;
+}
+
 export interface Message {
   id: string;
   user_id: string;
@@ -6,7 +14,7 @@ export interface Message {
   updated_at: string;
   channel_id: string;
   is_edited: boolean;
-  // parent_id: string | null;
+  file_attachment?: FileAttachment;
   user: {
     id: string;
     username: string;
@@ -24,4 +32,5 @@ export interface MessagesState {
 export interface SendMessageData {
   content: string;
   channel_id: string;
+  file?: File;
 } 

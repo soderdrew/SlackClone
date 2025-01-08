@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Message, SendMessageData } from '../types/message';
-import { PostgrestResponse } from '@supabase/supabase-js';
+import { fileService } from './fileService';
 
 interface MessageRow {
   id: string;
@@ -10,6 +10,12 @@ interface MessageRow {
   created_at: string;
   updated_at: string;
   is_edited: boolean;
+  file_attachment?: {
+    path: string;
+    filename: string;
+    size: number;
+    mimeType: string;
+  };
   user: {
     id: string;
     username: string;
@@ -35,7 +41,6 @@ class MessageService {
   }
 
   async getChannelMessages(channelId: string): Promise<Message[]> {
-
     const { data, error } = await supabase
       .from('messages')
       .select(`
@@ -46,6 +51,7 @@ class MessageService {
         created_at,
         updated_at,
         is_edited,
+        file_attachment,
         user:profiles (
           ${this.userProfileFields}
         )
@@ -69,6 +75,11 @@ class MessageService {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');
 
+    let fileAttachment = null;
+    if (messageData.file) {
+      fileAttachment = await fileService.uploadFile(messageData.file);
+    }
+
     console.log('Sending message:', {
       channelId: messageData.channel_id,
       isDM: this.isDMChannel(messageData.channel_id),
@@ -78,8 +89,10 @@ class MessageService {
     const { data, error } = await supabase
       .from('messages')
       .insert({
-        ...messageData,
-        user_id: userData.user.id
+        content: messageData.content,
+        channel_id: messageData.channel_id,
+        user_id: userData.user.id,
+        file_attachment: fileAttachment
       })
       .select(`
         id,
@@ -89,6 +102,7 @@ class MessageService {
         created_at,
         updated_at,
         is_edited,
+        file_attachment,
         user:profiles (
           ${this.userProfileFields}
         )
@@ -120,6 +134,7 @@ class MessageService {
         created_at,
         updated_at,
         is_edited,
+        file_attachment,
         user:profiles (
           ${this.userProfileFields}
         )
@@ -131,6 +146,18 @@ class MessageService {
   }
 
   async deleteMessage(messageId: string): Promise<void> {
+    // First get the message to check for file attachment
+    const { data: message } = await supabase
+      .from('messages')
+      .select('file_attachment')
+      .eq('id', messageId)
+      .single();
+
+    // If there's a file attachment, delete it first
+    if (message?.file_attachment?.path) {
+      await fileService.deleteFile(message.file_attachment.path);
+    }
+
     const { error } = await supabase
       .from('messages')
       .delete()
@@ -155,6 +182,7 @@ class MessageService {
         created_at,
         updated_at,
         is_edited,
+        file_attachment,
         user:profiles (
           ${this.userProfileFields}
         )
@@ -179,7 +207,7 @@ class MessageService {
     return latestMessages;
   }
 
-  // New method to get or create a DM channel between two users
+  // Method to get or create a DM channel between two users
   async getOrCreateDMChannel(otherUserId: string): Promise<string> {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('User not authenticated');

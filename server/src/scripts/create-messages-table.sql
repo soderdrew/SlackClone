@@ -1,17 +1,21 @@
 -- Create messages table
 CREATE TABLE IF NOT EXISTS public.messages (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     content TEXT NOT NULL,
-    channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+    channel_id UUID NOT NULL REFERENCES public.channels(id),
+    user_id UUID NOT NULL REFERENCES public.profiles(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_edited BOOLEAN DEFAULT FALSE,
-    type TEXT DEFAULT 'message',
-    CONSTRAINT messages_user_id_fkey
-        FOREIGN KEY (user_id)
-        REFERENCES public.profiles(id)
-        ON DELETE CASCADE
+    file_attachment JSONB,
+    CONSTRAINT file_attachment_schema CHECK (
+        file_attachment IS NULL OR (
+            file_attachment ? 'path' AND
+            file_attachment ? 'filename' AND
+            file_attachment ? 'size' AND
+            file_attachment ? 'mimeType'
+        )
+    )
 );
 
 -- Create indexes
@@ -80,4 +84,18 @@ CREATE TRIGGER set_message_update_fields
     BEFORE UPDATE ON public.messages
     FOR EACH ROW
     WHEN (OLD.content IS DISTINCT FROM NEW.content)
-    EXECUTE FUNCTION public.handle_message_update(); 
+    EXECUTE FUNCTION public.handle_message_update();
+
+-- Add trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_messages_updated_at
+    BEFORE UPDATE ON public.messages
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column(); 
