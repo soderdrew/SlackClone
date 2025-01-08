@@ -35,11 +35,6 @@ class MessageService {
   }
 
   async getChannelMessages(channelId: string): Promise<Message[]> {
-    console.log('Fetching messages for channel:', {
-      channelId,
-      isDM: this.isDMChannel(channelId),
-      timestamp: new Date().toISOString()
-    });
 
     const { data, error } = await supabase
       .from('messages')

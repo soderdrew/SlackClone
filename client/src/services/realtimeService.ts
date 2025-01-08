@@ -34,13 +34,6 @@ class RealtimeService {
             filter: `channel_id=eq.${channelId}`
           },
           async (payload) => {
-            console.log('REALTIME - Received INSERT update:', {
-              channelId,
-              payload,
-              isDM: channelId.startsWith('dm-'),
-              timestamp: new Date().toISOString()
-            });
-
             try {
               const newMessage = payload.new as Message;
               // Fetch user data for the message sender
@@ -57,23 +50,7 @@ class RealtimeService {
                   user: userData
                 };
                 
-                console.log('REALTIME - Dispatching message:', {
-                  channelId,
-                  messageId: messageWithUser.id,
-                  isDM: channelId.startsWith('dm-'),
-                  timestamp: new Date().toISOString()
-                });
-
                 store.dispatch(addMessage(messageWithUser));
-                
-                // Verify the state after dispatch
-                const currentState = store.getState();
-                console.log('REALTIME - State after dispatch:', {
-                  channelId,
-                  messageCount: currentState.messages.messages[channelId]?.length || 0,
-                  isDM: channelId.startsWith('dm-'),
-                  timestamp: new Date().toISOString()
-                });
               }
             } catch (error) {
               console.error('Error handling INSERT:', error);
@@ -89,13 +66,6 @@ class RealtimeService {
             filter: `channel_id=eq.${channelId}`
           },
           async (payload) => {
-            console.log('REALTIME - Received UPDATE:', {
-              channelId,
-              payload,
-              isDM: channelId.startsWith('dm-'),
-              timestamp: new Date().toISOString()
-            });
-
             try {
               const updatedMessage = payload.new as Message;
               const { data: userData } = await supabase
@@ -125,13 +95,6 @@ class RealtimeService {
             filter: `channel_id=eq.${channelId}`
           },
           (payload) => {
-            console.log('REALTIME - Received DELETE:', {
-              channelId,
-              messageId: payload.old.id,
-              isDM: channelId.startsWith('dm-'),
-              timestamp: new Date().toISOString()
-            });
-
             store.dispatch(deleteMessage({
               channelId,
               messageId: payload.old.id
@@ -141,20 +104,7 @@ class RealtimeService {
 
       // Subscribe and handle status
       const status = await channel.subscribe((status) => {
-        console.log('REALTIME - Subscription status:', {
-          channelId,
-          status,
-          isDM: channelId.startsWith('dm-'),
-          timestamp: new Date().toISOString()
-        });
-        
         if (status === 'SUBSCRIBED') {
-          console.log('REALTIME - Successfully subscribed to channel:', {
-            channelId,
-            isDM: channelId.startsWith('dm-'),
-            timestamp: new Date().toISOString()
-          });
-          
           // Refresh messages after successful subscription
           messageService.getChannelMessages(channelId).then(messages => {
             store.dispatch(setChannelMessages({ channelId, messages }));
@@ -188,8 +138,6 @@ class RealtimeService {
       await supabase.removeChannel(this.dmSubscription);
     }
 
-    console.log('REALTIME - Setting up DM subscription for user:', userId);
-
     const channel = supabase
       .channel('dm-updates')
       .on(
@@ -201,8 +149,6 @@ class RealtimeService {
           filter: `channel_id.like.dm-%`
         },
         async (payload) => {
-          console.log('REALTIME - Received new DM:', payload);
-          
           const newMessage = payload.new as Message;
           const channelId = newMessage.channel_id;
 
@@ -224,14 +170,6 @@ class RealtimeService {
 
                 // Dispatch the message update
                 store.dispatch(addMessage(messageWithUser));
-                
-                // Verify the state after dispatch
-                const currentState = store.getState();
-                console.log('REALTIME - DM State after dispatch:', {
-                  channelId,
-                  messageCount: currentState.messages.messages[channelId]?.length || 0,
-                  timestamp: new Date().toISOString()
-                });
               }
             } catch (error) {
               console.error('Error handling DM update:', error);
@@ -240,10 +178,7 @@ class RealtimeService {
         }
       );
 
-    const status = await channel.subscribe((status) => {
-      console.log('REALTIME - DM subscription status:', status);
-    });
-
+    const status = await channel.subscribe();
     this.dmSubscription = channel;
     return channel;
   }
@@ -253,8 +188,6 @@ class RealtimeService {
     if (this.channelSubscription) {
       await supabase.removeChannel(this.channelSubscription);
     }
-
-    console.log('REALTIME - Setting up channel subscription for user:', userId);
 
     const channel = supabase
       .channel('channel-updates')
@@ -266,24 +199,12 @@ class RealtimeService {
           table: 'channels'
         },
         async (payload) => {
-          console.log('REALTIME - Channel update received:', {
-            event: payload.eventType,
-            data: payload,
-            timestamp: new Date().toISOString()
-          });
-
           switch (payload.eventType) {
             case 'INSERT': {
               const newChannel = payload.new as Channel;
               // For DMs, check if the current user is involved
               if (newChannel.type === 'direct') {
                 if (newChannel.name.includes(userId)) {
-                  console.log('REALTIME - New DM channel involves current user:', {
-                    channelId: newChannel.id,
-                    channelName: newChannel.name,
-                    timestamp: new Date().toISOString()
-                  });
-                  
                   // Add the channel to Redux state
                   store.dispatch(addChannel(newChannel));
                   
@@ -310,13 +231,7 @@ class RealtimeService {
         }
       );
 
-    const status = await channel.subscribe((status) => {
-      console.log('REALTIME - Channel subscription status:', {
-        status,
-        timestamp: new Date().toISOString()
-      });
-    });
-
+    const status = await channel.subscribe();
     this.channelSubscription = channel;
     return channel;
   }

@@ -35,12 +35,6 @@ if (process.env.NODE_ENV === 'development') {
       channelId,
       count: messages?.length || 0,
     }));
-
-    console.log('REDUX - State Updated:', {
-      timestamp,
-      currentChannel: state.channels.currentChannel?.id,
-      messageCounts,
-    });
   });
 }
 

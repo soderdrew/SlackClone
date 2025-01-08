@@ -49,7 +49,6 @@ export const userService = {
   // Get a specific user by ID
   async getUserById(userId: string): Promise<User> {
     try {
-      console.log('Fetching user by ID:', userId);
       
       // Validate UUID format
       if (!userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
@@ -73,7 +72,6 @@ export const userService = {
         throw new Error('User not found');
       }
 
-      console.log('Successfully fetched user:', data.username);
       return data;
     } catch (error) {
       console.error('Error in getUserById:', error);

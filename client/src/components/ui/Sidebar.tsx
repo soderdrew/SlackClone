@@ -4,6 +4,7 @@ import { useAppSelector } from '../../hooks/redux';
 import { Channel } from '../../types/channel';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { StartDMModal } from '../messages/StartDMModal';
+import { CreateChannelModal } from '../channels/CreateChannelModal';
 import { userService } from '../../services/userService';
 import { realtimeService } from '../../services/realtimeService';
 
@@ -63,7 +64,7 @@ export function Sidebar() {
   const [isDMsExpanded, setIsDMsExpanded] = useState(true);
   const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
   const [isStartDMModalOpen, setIsStartDMModalOpen] = useState(false);
-  const [isAddChannelModalOpen, setIsAddChannelModalOpen] = useState(false);
+  const [isCreateChannelModalOpen, setIsCreateChannelModalOpen] = useState(false);
   const [dmChannels, setDmChannels] = useState<DMChannel[]>([]);
 
   // Initialize subscriptions when user logs in
@@ -84,11 +85,6 @@ export function Sidebar() {
   useEffect(() => {
     const loadDMChannels = async () => {
       if (user && channels.length > 0) {
-        console.log('Processing DM channels:', {
-          channelCount: channels.length,
-          userId: user.id,
-          timestamp: new Date().toISOString()
-        });
         const processed = await processDMChannels(channels, user.id);
         setDmChannels(processed);
       }
@@ -138,7 +134,7 @@ export function Sidebar() {
                 </Link>
               ))}
               <button
-                onClick={() => setIsAddChannelModalOpen(true)}
+                onClick={() => setIsCreateChannelModalOpen(true)}
                 className="flex items-center w-full px-2 py-1 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded"
               >
                 <PlusIcon className="h-4 w-4 mr-2" />
@@ -204,6 +200,10 @@ export function Sidebar() {
       <StartDMModal
         isOpen={isStartDMModalOpen}
         onClose={() => setIsStartDMModalOpen(false)}
+      />
+      <CreateChannelModal
+        isOpen={isCreateChannelModalOpen}
+        onClose={() => setIsCreateChannelModalOpen(false)}
       />
     </div>
   );

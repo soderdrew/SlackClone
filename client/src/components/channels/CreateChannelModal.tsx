@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/redux';
 import { addChannel, setError, setLoading } from '../../features/channels/channelsSlice';
 import { Button } from '../ui/Button';
@@ -8,6 +9,7 @@ import { useToast } from '../../hooks/useToast';
 import { CreateChannelData } from '../../types/channel';
 import { channelService } from '../../services/channelService';
 import { cn } from '../../utils/cn';
+import { LockClosedIcon, HashtagIcon } from '@heroicons/react/24/outline';
 
 interface CreateChannelModalProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ interface CreateChannelModalProps {
 
 export function CreateChannelModal({ isOpen, onClose }: CreateChannelModalProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const toast = useToast();
   const [formData, setFormData] = useState<CreateChannelData>({
     name: '',
@@ -26,6 +29,21 @@ export function CreateChannelModal({ isOpen, onClose }: CreateChannelModalProps)
     name: '',
     description: '',
   });
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({
+        name: '',
+        description: '',
+        type: 'public',
+      });
+      setFormErrors({
+        name: '',
+        description: '',
+      });
+    }
+  }, [isOpen]);
 
   // Validate channel name as user types
   const validateChannelName = (name: string): string => {
@@ -75,11 +93,16 @@ export function CreateChannelModal({ isOpen, onClose }: CreateChannelModalProps)
     try {
       dispatch(setLoading(true));
       
+      // Create the channel and get the response
       const channel = await channelService.createChannel(formData);
-      dispatch(addChannel(channel));
+      
+      // Close the modal first
+      onClose();
+      
+      // Then navigate to the new channel
+      navigate(`/channels/${channel.id}`);
       
       toast.success('Channel created successfully!');
-      onClose();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create channel';
       dispatch(setError(message));
@@ -92,8 +115,8 @@ export function CreateChannelModal({ isOpen, onClose }: CreateChannelModalProps)
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative z-50">
         <div className="p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-900">Create a channel</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -129,6 +152,43 @@ export function CreateChannelModal({ isOpen, onClose }: CreateChannelModalProps)
                   onChange={handleChange}
                   className="bg-white text-gray-900"
                 />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-gray-700">Privacy</Label>
+              <div className="mt-2">
+                <div className="w-full px-4 py-3 flex items-center justify-between rounded border border-gray-200 bg-white">
+                  <div className="flex items-center space-x-3">
+                    {formData.type === 'public' ? (
+                      <HashtagIcon className="h-5 w-5 text-gray-600" />
+                    ) : (
+                      <LockClosedIcon className="h-5 w-5 text-gray-600" />
+                    )}
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        {formData.type === 'public' 
+                          ? 'Anyone in the workspace can join'
+                          : 'Only invited people can join'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ 
+                      ...prev, 
+                      type: prev.type === 'public' ? 'private' : 'public' 
+                    }))}
+                    className="relative inline-flex w-12 h-7 rounded-full bg-gray-200"
+                  >
+                    <span
+                      className={cn(
+                        "absolute left-0.5 top-0.5 inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out",
+                        formData.type === 'public' ? 'translate-x-5 bg-blue-600' : 'translate-x-0 bg-gray-400'
+                      )}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
 

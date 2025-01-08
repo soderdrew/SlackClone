@@ -70,11 +70,7 @@ export function ChannelView() {
   // Force re-render on messages change
   const messageCount = messages.length;
   useEffect(() => {
-    console.log('COMPONENT - Messages updated:', {
-      channelId: currentChannel?.id,
-      count: messageCount,
-      timestamp: new Date().toISOString()
-    });
+    // Removed console log for component messages update
   }, [messageCount, currentChannel?.id]);
 
   const { isLoading } = useAppSelector((state) => state.messages);
@@ -101,12 +97,35 @@ export function ChannelView() {
     return () => clearTimeout(scrollTimeout);
   }, [messages]); // Depend directly on messages
 
+  // Set current channel based on route param
+  useEffect(() => {
+    async function initChannel() {
+      if (channelId && channels.length > 0) {
+        const channel = channels.find(c => c.id === channelId);
+        if (channel) {
+          // Fetch channel members to ensure we have up-to-date membership info
+          await dispatch(fetchChannelMembers(channelId));
+          
+          // Get the updated channel with member info
+          const updatedChannel = {
+            ...channel,
+            is_member: members.some(member => member.user_id === user?.id)
+          };
+          
+          dispatch(setCurrentChannel(updatedChannel));
+        }
+      }
+    }
+
+    initChannel();
+  }, [channelId, channels, dispatch, members, user?.id]);
+
   // Effect for channel initialization and realtime subscription
   useEffect(() => {
     let mounted = true;
 
     async function initializeChannel() {
-      if (!currentChannel?.id || !currentChannel.is_member) return;
+      if (!currentChannel?.id) return;
 
       try {
         dispatch(setLoading(true));
@@ -136,17 +155,7 @@ export function ChannelView() {
         realtimeService.unsubscribeFromChannelMessages(currentChannel.id);
       }
     };
-  }, [currentChannel?.id, currentChannel?.is_member, dispatch]);
-
-  // Set current channel based on route param
-  useEffect(() => {
-    if (channelId && channels.length > 0) {
-      const channel = channels.find(c => c.id === channelId);
-      if (channel) {
-        dispatch(setCurrentChannel(channel));
-      }
-    }
-  }, [channelId, channels, dispatch]);
+  }, [currentChannel?.id, dispatch]);
 
   // Handle sending a new message
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -451,13 +460,6 @@ export function ChannelView() {
       </div>
     );
   };
-
-  console.log('Render check:', {
-    currentChannelId: currentChannel?.id,
-    allMessagesKeys: Object.keys(useAppSelector((state) => state.messages.messages)),
-    currentMessagesLength: messages.length,
-    firstMessage: messages[0]
-  });
 
   if (!currentChannel) {
     return (

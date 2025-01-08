@@ -28,8 +28,76 @@ interface MemberResponse {
 
 class ChannelService {
   async createChannel(data: CreateChannelData): Promise<Channel> {
-    const response = await api.post<Channel>('/channels', data);
-    return response.data;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error('Not authenticated');
+
+      // Create the channel
+      const { data: channel, error: channelError } = await supabase
+        .from('channels')
+        .insert([
+          {
+            name: data.name,
+            description: data.description,
+            type: data.type,
+            created_by: userData.user.id
+          }
+        ])
+        .select(`
+          *,
+          channel_members (
+            user_id,
+            role
+          )
+        `)
+        .single();
+
+      if (channelError) throw channelError;
+
+      // Add the creator as an admin member
+      const { error: memberError } = await supabase
+        .from('channel_members')
+        .insert([
+          {
+            channel_id: channel.id,
+            user_id: userData.user.id,
+            role: 'admin'
+          }
+        ]);
+
+      if (memberError) throw memberError;
+
+      // Fetch the complete channel data with members
+      const { data: fullChannel, error: fetchError } = await supabase
+        .from('channels')
+        .select(`
+          *,
+          channel_members (
+            user_id,
+            role,
+            profiles:user_id (
+              id,
+              username,
+              full_name,
+              avatar_url
+            )
+          )
+        `)
+        .eq('id', channel.id)
+        .single();
+
+      if (fetchError || !fullChannel) throw fetchError;
+
+      // Return the channel with additional fields
+      return {
+        ...fullChannel,
+        member_count: fullChannel.channel_members?.length || 1,
+        is_member: true
+      };
+    } catch (error) {
+      console.error('Error creating channel:', error);
+      throw error;
+    }
   }
 
   async getChannels(): Promise<Channel[]> {
@@ -61,13 +129,8 @@ class ChannelService {
         .eq('type', 'direct')
         .eq('channel_members.user_id', currentUser.user.id);
 
-      if (membersError) {
-        console.error('Error details:', membersError);
-        throw membersError;
-      }
+      if (membersError) throw membersError;
       if (!channels) return [];
-      
-      console.log('Fetched DM channels:', channels);
       
       return channels.map(channel => ({
         ...channel,
@@ -102,14 +165,8 @@ class ChannelService {
         `)
         .eq('channel_id', channelId);
 
-      if (error) {
-        console.error('Error fetching channel members:', error);
-        throw error;
-      }
-
+      if (error) throw error;
       if (!data) return [];
-
-      console.log('Raw channel members data:', data);
 
       // Transform the data to match our expected type
       return data.map(member => {

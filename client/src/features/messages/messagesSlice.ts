@@ -16,11 +16,6 @@ const messagesSlice = createSlice({
       state,
       action: PayloadAction<{ channelId: string; messages: Message[] }>
     ) => {
-      console.log('REDUCER - setChannelMessages:', {
-        channelId: action.payload.channelId,
-        messageCount: action.payload.messages.length,
-        timestamp: new Date().toISOString()
-      });
       
       // Create new messages object to ensure reference change
       state.messages = {
