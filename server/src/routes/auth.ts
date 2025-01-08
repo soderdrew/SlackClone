@@ -8,6 +8,8 @@ router.post('/signup', async (req, res) => {
   try {
     const { email, password, full_name } = req.body;
     
+    console.log('Starting signup process for:', email);
+
     // Create auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -15,29 +17,35 @@ router.post('/signup', async (req, res) => {
       options: {
         data: {
           full_name,
+          pending_username: email.split('@')[0],
         },
+        emailRedirectTo: new URL('/confirm-email', process.env.CLIENT_URL || 'http://localhost:5173').toString(),
       },
     });
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('Failed to create user');
-
-    // Create user profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert([
-        {
-          id: authData.user.id,
-          email: email,
-          full_name: full_name,
-          username: email.split('@')[0], // Default username from email
+    console.log('Signup response:', {
+      authData: {
+        ...authData,
+        user: {
+          ...authData.user,
+          confirmation_sent_at: authData.user?.confirmation_sent_at,
+          email_confirmed_at: authData.user?.email_confirmed_at,
         }
-      ]);
+      },
+      authError
+    });
 
-    if (profileError) throw profileError;
+    if (authError) {
+      console.error('Auth error during signup:', authError);
+      throw authError;
+    }
 
-    // Add user to default channels
-    await addToDefaultChannels(authData.user.id);
+    if (!authData.user) {
+      console.error('No user data returned from signup');
+      throw new Error('Failed to create user');
+    }
+
+    console.log('User created successfully:', authData.user.id);
 
     res.json({ 
       message: 'Signup successful. Please check your email for verification.',
@@ -61,12 +69,55 @@ router.post('/signin', async (req, res) => {
 
     if (error) throw error;
 
-    // Get user profile
+    console.log('User metadata:', data.user.user_metadata);
+
+    // Check if profile exists
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', data.user.id)
       .single();
+
+    if (profileError && profileError.code === 'PGRST116') {
+      console.log('Creating new profile for user:', data.user.id);
+      
+      // Create default values if metadata is missing
+      const username = email.split('@')[0];
+      const fullName = data.user.user_metadata?.full_name || username;
+
+      // Profile doesn't exist, create it
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: data.user.id,
+            full_name: fullName,
+            username: username,
+          }
+        ])
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating profile:', createError);
+        throw createError;
+      }
+
+      console.log('Created new profile:', newProfile);
+
+      // Add user to default channels
+      await addToDefaultChannels(data.user.id);
+
+      res.json({ 
+        message: 'Login successful',
+        session: data.session,
+        user: {
+          ...data.user,
+          profile: newProfile,
+        }
+      });
+      return;
+    }
 
     if (profileError) throw profileError;
 
@@ -79,6 +130,7 @@ router.post('/signin', async (req, res) => {
       }
     });
   } catch (error: any) {
+    console.error('Signin error:', error);
     res.status(400).json({ error: error.message });
   }
 });

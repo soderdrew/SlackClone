@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { useParams } from 'react-router-dom';
 import { Button } from '../ui/Button';
@@ -15,6 +15,8 @@ import { MessageActions } from '../messages/MessageActions';
 import { userService } from '../../services/userService';
 import { Popover } from '@headlessui/react';
 import { UsersIcon } from '@heroicons/react/24/outline';
+import { MessageInput } from '../messages/MessageInput';
+import { shallowEqual } from 'react-redux';
 
 interface DMUser {
   id: string;
@@ -55,7 +57,27 @@ export function ChannelView() {
   const dispatch = useAppDispatch();
   const { channelId } = useParams();
   const { channels, currentChannel } = useAppSelector((state) => state.channels);
-  const { messages: messagesByChannel, isLoading } = useAppSelector((state) => state.messages);
+
+  // Use shallowEqual for object comparison
+  const messages = useAppSelector(
+    (state) => {
+      const channelMessages = currentChannel?.id ? state.messages.messages[currentChannel.id] : [];
+      return channelMessages || [];
+    },
+    shallowEqual
+  );
+
+  // Force re-render on messages change
+  const messageCount = messages.length;
+  useEffect(() => {
+    console.log('COMPONENT - Messages updated:', {
+      channelId: currentChannel?.id,
+      count: messageCount,
+      timestamp: new Date().toISOString()
+    });
+  }, [messageCount, currentChannel?.id]);
+
+  const { isLoading } = useAppSelector((state) => state.messages);
   const { user } = useAppSelector((state) => state.auth);
   const members = useAppSelector(state => selectChannelMembers(state, channelId || ''));
   
@@ -68,6 +90,54 @@ export function ChannelView() {
   // Ref for message container to auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Auto scroll to bottom when new messages arrive
+  useEffect(() => {
+    const scrollTimeout = setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+
+    return () => clearTimeout(scrollTimeout);
+  }, [messages]); // Depend directly on messages
+
+  // Effect for channel initialization and realtime subscription
+  useEffect(() => {
+    let mounted = true;
+
+    async function initializeChannel() {
+      if (!currentChannel?.id || !currentChannel.is_member) return;
+
+      try {
+        dispatch(setLoading(true));
+        
+        // Fetch initial messages
+        const fetchedMessages = await messageService.getChannelMessages(currentChannel.id);
+        if (mounted) {
+          dispatch(setChannelMessages({ channelId: currentChannel.id, messages: fetchedMessages }));
+        }
+
+        // Set up realtime subscription
+        await realtimeService.subscribeToChannelMessages(currentChannel.id);
+      } catch (error) {
+        console.error('Failed to initialize channel:', error);
+      } finally {
+        if (mounted) {
+          dispatch(setLoading(false));
+        }
+      }
+    }
+
+    initializeChannel();
+
+    return () => {
+      mounted = false;
+      if (currentChannel?.id) {
+        realtimeService.unsubscribeFromChannelMessages(currentChannel.id);
+      }
+    };
+  }, [currentChannel?.id, currentChannel?.is_member, dispatch]);
+
   // Set current channel based on route param
   useEffect(() => {
     if (channelId && channels.length > 0) {
@@ -77,34 +147,6 @@ export function ChannelView() {
       }
     }
   }, [channelId, channels, dispatch]);
-
-  // Get messages for current channel
-  const currentMessages: Message[] = currentChannel ? messagesByChannel[currentChannel.id] || [] : [];
-
-  // Auto scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentMessages]);
-
-  // Load messages when channel changes
-  useEffect(() => {
-    async function loadMessages() {
-      if (!currentChannel) return;
-      if (!currentChannel.is_member && currentChannel.type === 'public') return;
-
-      try {
-        dispatch(setLoading(true));
-        const messages: Message[] = await messageService.getChannelMessages(currentChannel.id);
-        dispatch(setChannelMessages({ channelId: currentChannel.id, messages }));
-      } catch (error) {
-        console.error('Failed to load messages:', error);
-      } finally {
-        dispatch(setLoading(false));
-      }
-    }
-
-    loadMessages();
-  }, [currentChannel?.id, currentChannel?.is_member, dispatch]);
 
   // Handle sending a new message
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -139,7 +181,7 @@ export function ChannelView() {
 
   // Render a message group (messages from the same user in sequence)
   const renderMessageGroup = (message: Message, index: number) => {
-    const prevMessage = index > 0 ? currentMessages[index - 1] : null;
+    const prevMessage = index > 0 ? messages[index - 1] : null;
     const isFirstInGroup = !prevMessage || prevMessage.user_id !== message.user_id;
     const isEditing = editingMessageId === message.id;
     
@@ -260,19 +302,6 @@ export function ChannelView() {
       autoJoinGeneralChannel();
     }
   }, [currentChannel?.id, currentChannel?.name, currentChannel?.type, dispatch]);
-
-  // Subscribe to real-time updates when channel changes
-  useEffect(() => {
-    if (!currentChannel?.id || !currentChannel.is_member) return;
-
-    // Subscribe to real-time updates
-    realtimeService.subscribeToChannelMessages(currentChannel.id);
-
-    // Cleanup subscription when component unmounts or channel changes
-    return () => {
-      realtimeService.unsubscribeFromChannelMessages(currentChannel.id);
-    };
-  }, [currentChannel?.id, currentChannel?.is_member]);
 
   // Update the effect that fetches the other user's info
   useEffect(() => {
@@ -423,6 +452,13 @@ export function ChannelView() {
     );
   };
 
+  console.log('Render check:', {
+    currentChannelId: currentChannel?.id,
+    allMessagesKeys: Object.keys(useAppSelector((state) => state.messages.messages)),
+    currentMessagesLength: messages.length,
+    firstMessage: messages[0]
+  });
+
   if (!currentChannel) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50">
@@ -480,7 +516,7 @@ export function ChannelView() {
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-500">Loading messages...</p>
           </div>
-        ) : currentMessages.length === 0 ? (
+        ) : messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <p className="text-gray-500 mb-2">No messages yet</p>
@@ -489,38 +525,21 @@ export function ChannelView() {
           </div>
         ) : (
           <div className="space-y-1 py-4">
-            {currentMessages.map((message, index) => renderMessageGroup(message, index))}
+            {messages.map((message, index) => renderMessageGroup(message, index))}
             <div ref={messagesEndRef} />
           </div>
         )}
       </div>
 
-      {/* Message Input - Fixed at bottom */}
-      <div className="flex-shrink-0 border-t border-gray-200 bg-white px-6 py-4">
-        <form onSubmit={handleSendMessage} className="flex w-full">
-          <div className="flex w-full space-x-4">
-            <div className="flex-1">
-              <Input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder={currentChannel?.type === 'direct' 
-                  ? `Message ${otherUser?.full_name || otherUser?.username || 'User'}`
-                  : `Message #${currentChannel?.name}`
-                }
-                className="w-full"
-              />
-            </div>
-            <Button 
-              type="submit" 
-              disabled={!newMessage.trim() || isLoading}
-              className="px-6 whitespace-nowrap flex-shrink-0"
-            >
-              Send
-            </Button>
-          </div>
-        </form>
-      </div>
+      {/* Message Input */}
+      <MessageInput 
+        channelId={channelId || ''} 
+        disabled={!currentChannel?.is_member}
+        placeholder={currentChannel?.is_member 
+          ? `Message ${currentChannel?.type === 'direct' ? otherUser?.full_name || 'user' : '#' + currentChannel?.name}`
+          : 'You must join this channel to send messages'
+        }
+      />
     </div>
   );
 } 

@@ -6,7 +6,7 @@ export interface Message {
   updated_at: string;
   channel_id: string;
   is_edited: boolean;
-  parent_id: string | null;
+  // parent_id: string | null;
   user: {
     id: string;
     username: string;

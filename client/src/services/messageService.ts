@@ -7,7 +7,7 @@ class MessageService {
       .from('messages')
       .select(`
         *,
-        user:user_id (
+        user:profiles (
           id,
           username,
           full_name
@@ -32,7 +32,7 @@ class MessageService {
       })
       .select(`
         *,
-        user:user_id (
+        user:profiles (
           id,
           username,
           full_name
@@ -51,7 +51,7 @@ class MessageService {
       .eq('id', messageId)
       .select(`
         *,
-        user:user_id (
+        user:profiles (
           id,
           username,
           full_name

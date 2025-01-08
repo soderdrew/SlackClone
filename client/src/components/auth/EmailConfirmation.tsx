@@ -6,6 +6,7 @@ import { AuthLayout } from '../layouts/AuthLayout';
 import { Button } from '../ui/Button';
 import { useToast } from '../../hooks/useToast';
 import { API_BASE_URL } from '../../config/api';
+import { supabase } from '../../lib/supabase';
 
 export function EmailConfirmation() {
   const navigate = useNavigate();
@@ -13,52 +14,65 @@ export function EmailConfirmation() {
   const toast = useToast();
 
   useEffect(() => {
-    // Set up event listener for Supabase auth state change
-    const handleAuthStateChange = async () => {
-      try {
-        // Get stored credentials
-        const credentialsStr = sessionStorage.getItem('pendingCredentials');
-        if (!credentialsStr) return;
-
-        const credentials = JSON.parse(credentialsStr);
-
-        // Attempt to sign in
-        const response = await fetch(`${API_BASE_URL}/auth/signin`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(credentials),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Auto-login failed');
-        }
-
-        // Clear stored credentials
-        sessionStorage.removeItem('pendingCredentials');
-
-        // Set auth state
-        dispatch(setCredentials({
-          user: data.user,
-          token: data.session.access_token,
-        }));
-
-        // Navigate to home
-        navigate('/');
-        toast.success('Email verified and logged in successfully!');
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Auto-login failed';
-        dispatch(setError(message));
-        toast.error(message);
+    // Handle hash fragment from email confirmation
+    const handleEmailConfirmation = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      if (hashParams.has('access_token') || hashParams.has('error')) {
+        // Clear the hash without triggering a reload
+        window.history.replaceState(null, '', window.location.pathname);
       }
     };
 
-    // Check auth state every few seconds
-    const interval = setInterval(handleAuthStateChange, 3000);
+    // Set up Supabase auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session);
+      
+      if (event === 'SIGNED_IN' && session) {
+        try {
+          // Get stored credentials
+          const credentialsStr = sessionStorage.getItem('pendingCredentials');
+          if (!credentialsStr) return;
+
+          const credentials = JSON.parse(credentialsStr);
+
+          // Attempt to sign in with our backend
+          const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Auto-login failed');
+          }
+
+          // Clear stored credentials
+          sessionStorage.removeItem('pendingCredentials');
+
+          // Set auth state
+          dispatch(setCredentials({
+            user: data.user,
+            token: data.session.access_token,
+          }));
+
+          // Navigate to home
+          navigate('/');
+          toast.success('Email verified and logged in successfully!');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Auto-login failed';
+          dispatch(setError(message));
+          toast.error(message);
+        }
+      }
+    });
+
+    // Handle initial email confirmation if present
+    handleEmailConfirmation();
 
     return () => {
-      clearInterval(interval);
+      subscription.unsubscribe();
       sessionStorage.removeItem('pendingCredentials');
     };
   }, [dispatch, navigate, toast]);

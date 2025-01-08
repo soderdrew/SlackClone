@@ -11,6 +11,24 @@ declare global {
   }
 }
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const getUserWithRetry = async (token: string, retries = 0): Promise<{ user: User | null; error: any }> => {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    return { user, error };
+  } catch (error) {
+    if (retries < MAX_RETRIES) {
+      await sleep(RETRY_DELAY);
+      return getUserWithRetry(token, retries + 1);
+    }
+    return { user: null, error };
+  }
+};
+
 export const authenticateToken = async (
   req: Request,
   res: Response,
@@ -25,9 +43,10 @@ export const authenticateToken = async (
       return;
     }
 
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const { user, error } = await getUserWithRetry(token);
 
     if (error || !user) {
+      console.error('Auth error:', error);
       res.status(401).json({ error: 'Invalid token' });
       return;
     }

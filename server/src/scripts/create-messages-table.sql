@@ -3,10 +3,15 @@ CREATE TABLE IF NOT EXISTS public.messages (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     content TEXT NOT NULL,
     channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-    is_edited BOOLEAN DEFAULT FALSE
+    is_edited BOOLEAN DEFAULT FALSE,
+    type TEXT DEFAULT 'message',
+    CONSTRAINT messages_user_id_fkey
+        FOREIGN KEY (user_id)
+        REFERENCES public.profiles(id)
+        ON DELETE CASCADE
 );
 
 -- Create indexes
@@ -16,6 +21,9 @@ CREATE INDEX IF NOT EXISTS messages_created_at_idx ON public.messages(created_at
 
 -- Set up Row Level Security (RLS)
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+-- Enable real-time for this table
+ALTER TABLE public.messages REPLICA IDENTITY FULL;
 
 -- Create policies
 -- Users can view messages in public channels or private channels they're members of
