@@ -100,25 +100,46 @@ export function ChannelView() {
   // Set current channel based on route param
   useEffect(() => {
     async function initChannel() {
-      if (channelId && channels.length > 0) {
-        const channel = channels.find(c => c.id === channelId);
-        if (channel) {
-          // Fetch channel members to ensure we have up-to-date membership info
-          await dispatch(fetchChannelMembers(channelId));
-          
-          // Get the updated channel with member info
-          const updatedChannel = {
-            ...channel,
-            is_member: members.some(member => member.user_id === user?.id)
-          };
-          
-          dispatch(setCurrentChannel(updatedChannel));
+      if (!channelId || !channels.length || !user?.id) return;
+
+      const channel = channels.find(c => c.id === channelId);
+      if (!channel) return;
+
+      try {
+        // Fetch channel members first
+        await dispatch(fetchChannelMembers(channelId));
+        
+        // Check if user is a member
+        const isMember = members.some(member => member.user_id === user.id);
+        
+        // If this is a newly created channel (creator should be a member)
+        const isCreator = channel.created_by === user.id;
+        
+        // Update channel with membership info
+        const updatedChannel = {
+          ...channel,
+          is_member: isMember || isCreator // User is a member if they're in members list OR they created the channel
+        };
+        
+        dispatch(setCurrentChannel(updatedChannel));
+
+        // If user is the creator but not in members yet, join the channel
+        if (isCreator && !isMember) {
+          try {
+            await channelService.joinChannel(channelId);
+            // Refresh members after joining
+            dispatch(fetchChannelMembers(channelId));
+          } catch (error) {
+            console.error('Error joining as creator:', error);
+          }
         }
+      } catch (error) {
+        console.error('Error initializing channel:', error);
       }
     }
 
     initChannel();
-  }, [channelId, channels, dispatch, members, user?.id]);
+  }, [channelId, channels, user?.id, dispatch]);
 
   // Effect for channel initialization and realtime subscription
   useEffect(() => {
@@ -137,7 +158,9 @@ export function ChannelView() {
         }
 
         // Set up realtime subscription
-        await realtimeService.subscribeToChannelMessages(currentChannel.id);
+        if (mounted) {
+          await realtimeService.subscribeToChannelMessages(currentChannel.id);
+        }
       } catch (error) {
         console.error('Failed to initialize channel:', error);
       } finally {

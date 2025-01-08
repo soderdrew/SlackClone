@@ -144,8 +144,46 @@ class ChannelService {
   }
 
   async getChannel(id: string): Promise<Channel> {
-    const response = await api.get<Channel>(`/channels/${id}`);
-    return response.data;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error('Not authenticated');
+
+      // Fetch channel with members
+      const { data: channel, error } = await supabase
+        .from('channels')
+        .select(`
+          *,
+          channel_members (
+            user_id,
+            role,
+            profiles:user_id (
+              id,
+              username,
+              full_name,
+              avatar_url
+            )
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      if (!channel) throw new Error('Channel not found');
+
+      // Check if the current user is a member
+      const isMember = channel.channel_members.some(
+        (member: { user_id: string }) => member.user_id === userData.user.id
+      );
+
+      return {
+        ...channel,
+        member_count: channel.channel_members.length,
+        is_member: isMember
+      };
+    } catch (error) {
+      console.error('Error fetching channel:', error);
+      throw error;
+    }
   }
 
   async getChannelMembers(channelId: string): Promise<ChannelMember[]> {
@@ -200,7 +238,49 @@ class ChannelService {
   }
 
   async joinChannel(channelId: string): Promise<void> {
-    await api.post(`/channels/${channelId}/join`);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error('Not authenticated');
+
+      // Add the user as a member
+      const { error: memberError } = await supabase
+        .from('channel_members')
+        .insert([
+          {
+            channel_id: channelId,
+            user_id: userData.user.id,
+            role: 'member'
+          }
+        ]);
+
+      if (memberError) {
+        // If the error is because they're already a member, that's fine
+        if (memberError.code === '23505') { // Unique constraint violation
+          return;
+        }
+        throw memberError;
+      }
+
+      // Create a system message announcing the join
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert([
+          {
+            channel_id: channelId,
+            user_id: userData.user.id,
+            content: `<@${userData.user.id}> joined the channel`,
+            is_system_message: true
+          }
+        ]);
+
+      // Don't throw if system message fails, just log it
+      if (messageError) {
+        console.error('Error creating system message:', messageError);
+      }
+    } catch (error) {
+      console.error('Error joining channel:', error);
+      throw error;
+    }
   }
 
   async updateChannel(id: string, data: Partial<Channel>): Promise<Channel> {
