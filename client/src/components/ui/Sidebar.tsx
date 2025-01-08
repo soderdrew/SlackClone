@@ -5,6 +5,7 @@ import { Channel } from '../../types/channel';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { StartDMModal } from '../messages/StartDMModal';
 import { userService } from '../../services/userService';
+import { realtimeService } from '../../services/realtimeService';
 
 interface DMChannel extends Channel {
   displayName: string;
@@ -65,10 +66,29 @@ export function Sidebar() {
   const [isAddChannelModalOpen, setIsAddChannelModalOpen] = useState(false);
   const [dmChannels, setDmChannels] = useState<DMChannel[]>([]);
 
+  // Initialize subscriptions when user logs in
+  useEffect(() => {
+    if (user?.id) {
+      // Subscribe to DM message updates
+      realtimeService.subscribeToDMUpdates(user.id);
+      // Subscribe to channel updates (including new DMs)
+      realtimeService.subscribeToChannels(user.id);
+    }
+
+    return () => {
+      // Cleanup will be handled by realtimeService's cleanup method
+    };
+  }, [user?.id]);
+
   // Process DM channels when channels or user changes
   useEffect(() => {
     const loadDMChannels = async () => {
       if (user && channels.length > 0) {
+        console.log('Processing DM channels:', {
+          channelCount: channels.length,
+          userId: user.id,
+          timestamp: new Date().toISOString()
+        });
         const processed = await processDMChannels(channels, user.id);
         setDmChannels(processed);
       }
