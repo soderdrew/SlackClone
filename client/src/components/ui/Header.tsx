@@ -75,8 +75,8 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
             {displayName[0]?.toUpperCase() || '?'}
           </div>
         )}
-        <div className="absolute -bottom-0.5 -right-0.5">
-          <StatusIndicator status={status} size="sm" />
+        <div className="absolute -bottom-1 -right-1">
+          <StatusIndicator status={status} size="md" />
         </div>
       </div>
     );
