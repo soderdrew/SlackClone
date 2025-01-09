@@ -1,4 +1,4 @@
-import { FC, useEffect } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { Popover } from '@headlessui/react';
 import { UsersIcon } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -6,6 +6,10 @@ import { fetchChannelMembers, selectChannelMembers, selectChannelMembersLoading 
 import { Button } from './Button';
 import { ChannelMember } from '../../types/channel';
 import { GlobalSearch } from '../search/GlobalSearch';
+import { StatusIndicator } from './StatusIndicator';
+import { UpdateStatusModal } from './UpdateStatusModal';
+import { userService } from '../../services/userService';
+import { UserStatus } from '../../types/user';
 
 interface HeaderProps {
   channelName: string;
@@ -17,12 +21,33 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
   const dispatch = useAppDispatch();
   const members = useAppSelector(state => selectChannelMembers(state, channelId));
   const isLoadingMembers = useAppSelector(state => selectChannelMembersLoading(state, channelId));
+  const currentUser = useAppSelector(state => state.auth.user);
+  
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState<UserStatus>('online');
+  const [currentStatusMessage, setCurrentStatusMessage] = useState<string>('');
 
   useEffect(() => {
     if (channelId) {
       dispatch(fetchChannelMembers(channelId));
     }
   }, [channelId, dispatch]);
+
+  useEffect(() => {
+    const fetchCurrentStatus = async () => {
+      if (currentUser?.id) {
+        try {
+          const status = await userService.getCurrentUserStatus();
+          setCurrentStatus(status.status);
+          setCurrentStatusMessage(status.status_message || '');
+        } catch (error) {
+          console.error('Error fetching current status:', error);
+        }
+      }
+    };
+    
+    fetchCurrentStatus();
+  }, [currentUser?.id]);
 
   const getMemberDisplayName = (member: ChannelMember) => {
     return member.user?.full_name || member.user?.username || member.username || 'Unknown User';
@@ -35,19 +60,24 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
   const renderMemberAvatar = (member: ChannelMember) => {
     const avatarUrl = member.user?.avatar_url || member.avatar_url;
     const displayName = getMemberDisplayName(member);
+    const status = member.user?.presence?.status || 'offline';
 
-    if (avatarUrl) {
-      return (
-        <img 
-          src={avatarUrl} 
-          alt={displayName}
-          className="w-8 h-8 rounded-full"
-        />
-      );
-    }
     return (
-      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
-        {displayName[0]?.toUpperCase() || '?'}
+      <div className="relative">
+        {avatarUrl ? (
+          <img 
+            src={avatarUrl} 
+            alt={displayName}
+            className="w-8 h-8 rounded-full"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700">
+            {displayName[0]?.toUpperCase() || '?'}
+          </div>
+        )}
+        <div className="absolute -bottom-0.5 -right-0.5">
+          <StatusIndicator status={status} size="sm" />
+        </div>
       </div>
     );
   };
@@ -68,6 +98,20 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
         <div className="flex-1" />
         
         <div className="flex items-center space-x-4 ml-4">
+          {currentUser && (
+            <button
+              onClick={() => setIsStatusModalOpen(true)}
+              className="flex items-center space-x-2 px-3 py-1.5 rounded-md 
+                hover:bg-gray-100 transition-colors duration-150 group
+                focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <StatusIndicator status={currentStatus} size="sm" />
+              <span className="text-sm text-gray-600 group-hover:text-gray-900">
+                {currentStatusMessage || 'Set a status'}
+              </span>
+            </button>
+          )}
+
           <GlobalSearch />
 
           <Popover className="relative flex-shrink-0">
@@ -115,9 +159,14 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
                                 <p className="text-sm font-medium text-gray-900 truncate">
                                   {getMemberDisplayName(member)}
                                 </p>
-                                {getMemberUsername(member) && (
-                                  <p className="text-xs text-gray-500 truncate">@{getMemberUsername(member)}</p>
-                                )}
+                                <div className="flex items-center space-x-2">
+                                  {getMemberUsername(member) && (
+                                    <p className="text-xs text-gray-500 truncate">@{getMemberUsername(member)}</p>
+                                  )}
+                                  {member.user?.presence?.status_message && (
+                                    <p className="text-xs text-gray-500 truncate">• {member.user.presence.status_message}</p>
+                                  )}
+                                </div>
                               </div>
                               {member.role === 'admin' && (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
@@ -136,6 +185,16 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
           </Popover>
         </div>
       </div>
+
+      {currentUser && (
+        <UpdateStatusModal
+          isOpen={isStatusModalOpen}
+          onClose={() => setIsStatusModalOpen(false)}
+          currentStatus={currentStatus}
+          currentStatusMessage={currentStatusMessage}
+          userId={currentUser.id}
+        />
+      )}
     </header>
   );
 }; 

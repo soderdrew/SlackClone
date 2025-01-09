@@ -1,3 +1,5 @@
+import { User } from './user';
+
 export type ChannelType = 'public' | 'private' | 'direct';
 
 interface ChannelMemberProfile {
@@ -9,17 +11,13 @@ interface ChannelMemberProfile {
 
 export interface ChannelMember {
   id?: string;
-  user_id: string;
+  user_id?: string;
+  channel_id: string;
   username?: string;
-  full_name?: string;
   avatar_url?: string;
-  role: 'admin' | 'member';
-  user?: {
-    id: string;
-    username: string;
-    full_name?: string;
-    avatar_url?: string;
-  };
+  role?: 'admin' | 'member';
+  joined_at?: string;
+  user?: User;
 }
 
 export interface Channel {
