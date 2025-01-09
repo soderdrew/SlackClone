@@ -1,29 +1,54 @@
 import { FC, useCallback, useRef, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { usePresenceSubscription } from '../../hooks/usePresenceSubscription';
-import { updateChannelMemberPresence } from '../../features/channels/channelsSlice';
+import { updateChannelMemberPresence, fetchChannelMembers } from '../../features/channels/channelsSlice';
 import { UserPresence } from '../../types/user';
+import { Channel } from '../../types/channel';
 
 export const PresenceHandler: FC = () => {
   const dispatch = useAppDispatch();
   const channelMembers = useAppSelector(state => state.channels.channelMembers);
+  const channels = useAppSelector(state => state.channels.channels);
+  const currentChannel = useAppSelector(state => state.channels.currentChannel);
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Add debug effect for channelMembers
+  // Effect to ensure we have members for the current channel
+  useEffect(() => {
+    if (currentChannel?.id && !channelMembers[currentChannel.id]) {
+      console.log('Fetching members for current channel:', currentChannel.id);
+      dispatch(fetchChannelMembers(currentChannel.id));
+    }
+  }, [currentChannel?.id, channelMembers, dispatch]);
+
+  // Debug effect for channelMembers
   useEffect(() => {
     console.log('PresenceHandler channelMembers state:', {
       channels: Object.keys(channelMembers),
       memberCounts: Object.fromEntries(
         Object.entries(channelMembers).map(([k, v]) => [k, v.length])
-      )
+      ),
+      currentChannelId: currentChannel?.id
     });
-  }, [channelMembers]);
+  }, [channelMembers, currentChannel]);
 
   const handlePresenceUpdate = useCallback((update: { id: string; presence: UserPresence }) => {
     console.log('PresenceHandler received update:', update);
-    console.log('Current channelMembers state:', {
+    
+    // Log detailed state for debugging
+    const channelDetails = Object.entries(channelMembers).map(([channelId, members]) => {
+      const channel = channels.find(c => c.id === channelId);
+      return {
+        channelId,
+        type: channel?.type,
+        memberCount: members.length,
+        memberIds: members.map(m => m.user?.id || m.user_id)
+      };
+    });
+    
+    console.log('Current state when processing update:', {
       hasChannels: Object.keys(channelMembers).length > 0,
-      channels: Object.keys(channelMembers)
+      channels: channelDetails,
+      updateUserId: update.id
     });
     
     // Clear any pending updates
@@ -41,21 +66,37 @@ export const PresenceHandler: FC = () => {
 
         // Update presence for all channels
         Object.entries(channelMembers).forEach(([channelId, members]) => {
-          console.log(`Checking channel ${channelId} with ${members.length} members`);
-          
-          // Check if the user is a member of this channel
-          const isMember = members.some(member => {
-            const isMatch = member.user?.id === update.id || member.user_id === update.id;
-            console.log('Checking member:', {
-              memberId: member.user?.id || member.user_id,
-              updateId: update.id,
-              isMatch
-            });
-            return isMatch;
+          const channel = channels.find(c => c.id === channelId);
+          console.log(`Checking channel ${channelId} (type: ${channel?.type}) with ${members.length} members:`, {
+            memberIds: members.map(m => m.user?.id || m.user_id),
+            updateUserId: update.id
           });
+          
+          // For direct message channels, we want to update if either user is the one who changed status
+          const isMember = channel?.type === 'direct' 
+            ? members.some(member => {
+                const isMatch = member.user?.id === update.id || member.user_id === update.id;
+                console.log('Checking DM member:', {
+                  memberId: member.user?.id || member.user_id,
+                  updateId: update.id,
+                  isMatch,
+                  channelType: channel.type
+                });
+                return isMatch;
+              })
+            : members.some(member => {
+                const isMatch = member.user?.id === update.id || member.user_id === update.id;
+                console.log('Checking regular member:', {
+                  memberId: member.user?.id || member.user_id,
+                  updateId: update.id,
+                  isMatch,
+                  channelType: channel?.type
+                });
+                return isMatch;
+              });
 
           if (isMember) {
-            console.log(`Dispatching presence update for user ${update.id} in channel ${channelId}`, {
+            console.log(`Dispatching presence update for user ${update.id} in channel ${channelId} (type: ${channel?.type})`, {
               channelId,
               userId: update.id,
               presence: update.presence
@@ -67,14 +108,14 @@ export const PresenceHandler: FC = () => {
               presence: update.presence
             }));
           } else {
-            console.log(`User ${update.id} not found in channel ${channelId}`);
+            console.log(`User ${update.id} not found in channel ${channelId} (type: ${channel?.type})`);
           }
         });
       } catch (error) {
         console.error('Error updating presence:', error);
       }
     }, 100); // Small delay to batch updates
-  }, [dispatch, channelMembers]);
+  }, [dispatch, channelMembers, channels]);
 
   usePresenceSubscription(handlePresenceUpdate);
 
