@@ -119,7 +119,7 @@ class SearchService {
 
     console.log('Starting file search with query:', query);
 
-    // Simple query to test files table access
+    // First get matching files
     const { data: files, error } = await supabase
       .from('files')
       .select('*')
@@ -132,17 +132,53 @@ class SearchService {
       return [];
     }
 
-    console.log('Files search results:', files);
+    if (!files || files.length === 0) {
+      return [];
+    }
 
-    return (files || []).map(file => ({
-      id: `${file.id}-${file.name}`,
-      type: 'file' as const,
-      title: file.name,
-      subtitle: 'File attachment',
-      channelId: 'unknown',
-      timestamp: formatDistanceToNow(new Date(file.created_at), { addSuffix: true }),
-      matchingText: ''
-    }));
+    // Then get message details for these files
+    const messageIds = files.map(file => file.message_id).filter(Boolean);
+    
+    let messageDetails: Record<string, any> = {};
+    
+    if (messageIds.length > 0) {
+      const { data: messages, error: msgError } = await supabase
+        .from('messages')
+        .select(`
+          id,
+          channel_id,
+          channels (
+            name
+          ),
+          profiles (
+            username,
+            full_name
+          )
+        `)
+        .in('id', messageIds);
+
+      if (!msgError && messages) {
+        messageDetails = messages.reduce((acc: Record<string, any>, msg) => {
+          acc[msg.id] = msg;
+          return acc;
+        }, {});
+      }
+    }
+
+    return files.map(file => {
+      const message = messageDetails[file.message_id];
+      return {
+        id: `${file.id}-${file.name}`,
+        type: 'file' as const,
+        title: file.name,
+        subtitle: message 
+          ? `Shared by ${message.profiles?.full_name || message.profiles?.username || 'Unknown User'} in #${message.channels?.name || 'unknown-channel'}`
+          : 'File attachment',
+        channelId: message?.channel_id || 'unknown',
+        timestamp: formatDistanceToNow(new Date(file.created_at), { addSuffix: true }),
+        matchingText: ''
+      };
+    });
   }
 
   async search(options: SearchOptions): Promise<SearchResult[]> {
