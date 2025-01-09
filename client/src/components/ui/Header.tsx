@@ -1,8 +1,8 @@
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState, useCallback } from 'react';
 import { Popover } from '@headlessui/react';
 import { UsersIcon } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { fetchChannelMembers, selectChannelMembers, selectChannelMembersLoading } from '../../features/channels/channelsSlice';
+import { fetchChannelMembers, selectChannelMembers, selectChannelMembersLoading, updateChannelMemberPresence } from '../../features/channels/channelsSlice';
 import { Button } from './Button';
 import { ChannelMember } from '../../types/channel';
 import { GlobalSearch } from '../search/GlobalSearch';
@@ -10,6 +10,8 @@ import { StatusIndicator } from './StatusIndicator';
 import { UpdateStatusModal } from './UpdateStatusModal';
 import { userService } from '../../services/userService';
 import { UserStatus } from '../../types/user';
+import { usePresenceSubscription } from '../../hooks/usePresenceSubscription';
+import { UserPresence } from '../../types/user';
 
 interface HeaderProps {
   channelName: string;
@@ -26,6 +28,31 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<UserStatus>('online');
   const [currentStatusMessage, setCurrentStatusMessage] = useState<string>('');
+
+  // Handle presence updates
+  const handlePresenceUpdate = useCallback((update: { id: string; presence: UserPresence }) => {
+    console.log('Handling presence update in Header:', update);
+    // Update current user's status if it's their update
+    if (currentUser?.id === update.id) {
+      setCurrentStatus(update.presence.status);
+      setCurrentStatusMessage(update.presence.status_message || '');
+    }
+
+    // Update the member in our channel members list
+    dispatch(updateChannelMemberPresence({ 
+      channelId, 
+      userId: update.id, 
+      presence: update.presence 
+    }));
+  }, [channelId, currentUser?.id, dispatch]);
+
+  // Subscribe to presence updates
+  const isPresenceConnected = usePresenceSubscription(handlePresenceUpdate);
+
+  // Log connection status changes
+  useEffect(() => {
+    console.log('Presence connection status:', isPresenceConnected);
+  }, [isPresenceConnected]);
 
   useEffect(() => {
     if (channelId) {

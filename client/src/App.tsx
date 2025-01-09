@@ -1,9 +1,9 @@
 import React from 'react';
 import { Provider } from 'react-redux';
 import { RouterProvider } from 'react-router-dom';
-import { store } from './store';
 import { router } from './routes';
 import { Toaster } from 'sonner';
+import { store } from './store';
 
 function App() {
   return (

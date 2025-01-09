@@ -2,6 +2,7 @@ import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { Channel } from '../../types/channel';
 import { ChannelMember } from '../../types/channel';
 import { channelService } from '../../services/channelService';
+import { UserPresence, UserStatus } from '../../types/user';
 
 // Async thunk for fetching channels
 export const fetchChannels = createAsyncThunk(
@@ -69,7 +70,13 @@ const initialState: ChannelState = {
   error: null,
 };
 
-const channelsSlice = createSlice({
+interface UpdatePresencePayload {
+  channelId: string;
+  userId: string;
+  presence: UserPresence;
+}
+
+export const channelsSlice = createSlice({
   name: 'channels',
   initialState,
   reducers: {
@@ -128,6 +135,21 @@ const channelsSlice = createSlice({
     setError(state, action: PayloadAction<string | null>) {
       state.error = action.payload;
     },
+    updateChannelMemberPresence: (state, action: PayloadAction<UpdatePresencePayload>) => {
+      const { channelId, userId, presence } = action.payload;
+      
+      // Update member in the channelMembers state
+      const members = state.channelMembers[channelId];
+      if (!members) return;
+
+      const member = members.find(m => 
+        m.user_id === userId || (m.user && m.user.id === userId)
+      );
+      
+      if (member && member.user) {
+        member.user.presence = presence;
+      }
+    }
   },
 });
 
@@ -142,6 +164,7 @@ export const {
   setMemberError,
   setLoading,
   setError,
+  updateChannelMemberPresence,
 } = channelsSlice.actions;
 
 // Selector to get members for a specific channel
