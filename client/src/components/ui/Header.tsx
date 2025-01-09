@@ -103,7 +103,7 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
           </div>
         )}
         <div className="absolute -bottom-1 -right-1">
-          <StatusIndicator status={status} size="md" />
+          <StatusIndicator status={status} size="md" isCurrentUser={member.user?.id === currentUser?.id} />
         </div>
       </div>
     );
@@ -132,7 +132,7 @@ export const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
                 hover:bg-gray-100 transition-colors duration-150 group
                 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <StatusIndicator status={currentStatus} size="sm" />
+              <StatusIndicator status={currentStatus} size="sm" isCurrentUser={true} />
               <span className="text-sm text-gray-600 group-hover:text-gray-900">
                 {currentStatusMessage || 'Set a status'}
               </span>
