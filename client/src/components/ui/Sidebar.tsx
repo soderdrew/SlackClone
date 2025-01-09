@@ -7,6 +7,7 @@ import { StartDMModal } from '../messages/StartDMModal';
 import { CreateChannelModal } from '../channels/CreateChannelModal';
 import { userService } from '../../services/userService';
 import { realtimeService } from '../../services/realtimeService';
+import { SearchBar } from './SearchBar';
 
 interface DMChannel extends Channel {
   displayName: string;
@@ -66,6 +67,7 @@ export function Sidebar() {
   const [isStartDMModalOpen, setIsStartDMModalOpen] = useState(false);
   const [isCreateChannelModalOpen, setIsCreateChannelModalOpen] = useState(false);
   const [dmChannels, setDmChannels] = useState<DMChannel[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Initialize subscriptions when user logs in
   useEffect(() => {
@@ -96,11 +98,31 @@ export function Sidebar() {
   // Separate regular channels
   const regularChannels = channels.filter(channel => channel.type !== 'direct');
 
+  // Filter channels and DMs based on search query
+  const filteredRegularChannels = regularChannels.filter(channel =>
+    channel.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredDMChannels = dmChannels.filter(dm =>
+    dm.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    dm.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="w-64 bg-gray-900 flex-shrink-0 h-full flex flex-col">
       {/* Header */}
       <div className="h-16 bg-gray-900 border-b border-gray-800 flex items-center px-4">
         <h1 className="text-white font-semibold text-lg">ChatGenius</h1>
+      </div>
+
+      {/* Search Bar */}
+      <div className="px-3 py-2">
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search channels and DMs..."
+          className="mb-2"
+        />
       </div>
 
       {/* Main Content Area */}
@@ -116,7 +138,7 @@ export function Sidebar() {
           </button>
           {isChannelsExpanded && (
             <div className="space-y-1">
-              {regularChannels.map((channel) => (
+              {filteredRegularChannels.map((channel) => (
                 <Link
                   key={channel.id}
                   to={`/channels/${channel.id}`}
@@ -162,7 +184,7 @@ export function Sidebar() {
                 <PlusIcon className="h-4 w-4 mr-2" />
                 Start a New Message
               </button>
-              {dmChannels.map((dm) => (
+              {filteredDMChannels.map((dm) => (
                 <Link
                   key={dm.id}
                   to={`/channels/${dm.id}`}

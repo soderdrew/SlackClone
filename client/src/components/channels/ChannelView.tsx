@@ -14,10 +14,9 @@ import { MessageContent } from '../messages/MessageContent';
 import { MessageActions } from '../messages/MessageActions';
 import { FileAttachmentPreview } from '../messages/FileAttachmentPreview';
 import { userService } from '../../services/userService';
-import { Popover } from '@headlessui/react';
-import { UsersIcon } from '@heroicons/react/24/outline';
 import { MessageInput } from '../messages/MessageInput';
 import { shallowEqual } from 'react-redux';
+import { Header } from '../ui/Header';
 
 interface DMUser {
   id: string;
@@ -366,128 +365,6 @@ export function ChannelView() {
     }
   }, [channelId, currentChannel?.is_member, dispatch]);
 
-  // Update the header rendering
-  const renderHeader = () => {
-    if (!currentChannel) return null;
-
-    if (currentChannel.type === 'direct') {
-      return (
-        <div className="flex items-center min-w-0 flex-1 h-full px-6">
-          <div className="flex items-center">
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-              {otherUser?.avatar_url ? (
-                <img
-                  src={otherUser.avatar_url}
-                  alt={otherUser.username}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                <span className="text-gray-600 text-lg font-medium">
-                  {(otherUser?.username?.[0] || '?').toUpperCase()}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col">
-              <h1 className="text-lg font-semibold text-gray-900 leading-tight">
-                {otherUser?.full_name || otherUser?.username || 'Unknown User'}
-              </h1>
-              {otherUser?.username && (
-                <p className="text-sm text-gray-500 leading-tight">@{otherUser.username}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex items-center justify-between h-full px-6">
-        <div className="flex items-center min-w-0 flex-1">
-          <div className="flex items-center">
-            <h1 className="text-xl font-semibold text-gray-900 mr-4">#{currentChannel.name}</h1>
-            <div className="h-6 w-px bg-gray-300 mx-4" />
-            <p className="text-sm text-gray-600 truncate max-w-2xl">
-              {currentChannel.description || 'No description set'}
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex items-center ml-4">
-          <Popover className="relative">
-            {({ open }) => (
-              <>
-                <Popover.Button
-                  className={`
-                    ${open ? 'bg-gray-50 border-gray-300' : 'border-gray-200'}
-                    group flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium
-                    bg-white border text-gray-800 hover:border-gray-300 hover:bg-gray-50 
-                    transition-colors duration-150 ease-in-out
-                    focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
-                >
-                  <UsersIcon
-                    className="h-4 w-4 text-gray-600 group-hover:text-gray-700"
-                    aria-hidden="true"
-                  />
-                  <span>{members.length} {members.length === 1 ? 'member' : 'members'}</span>
-                </Popover.Button>
-
-                <Popover.Panel className="absolute right-0 z-10 mt-2 w-screen max-w-xs transform px-2">
-                  <div className="overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5">
-                    <div className="relative bg-white p-3">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-medium text-gray-900">Channel Members</h3>
-                        <span className="text-xs text-gray-500">
-                          {members.length} {members.length === 1 ? 'member' : 'members'}
-                        </span>
-                      </div>
-                      <div className="space-y-2 max-h-96 overflow-y-auto">
-                        {members.map((member) => (
-                          <div
-                            key={member.id || member.user_id}
-                            className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md"
-                          >
-                            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
-                              {member.user?.avatar_url ? (
-                                <img
-                                  src={member.user.avatar_url}
-                                  alt={member.user.username}
-                                  className="w-full h-full rounded-full"
-                                />
-                              ) : (
-                                <span className="text-sm text-gray-700">
-                                  {(member.user?.username?.[0] || '?').toUpperCase()}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {member.user?.full_name || member.user?.username || 'Unknown User'}
-                              </p>
-                              {member.user?.username && (
-                                <p className="text-xs text-gray-500 truncate">
-                                  @{member.user.username}
-                                </p>
-                              )}
-                            </div>
-                            {member.role === 'admin' && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                Admin
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </Popover.Panel>
-              </>
-            )}
-          </Popover>
-        </div>
-      </div>
-    );
-  };
-
   if (!currentChannel) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50">
@@ -535,9 +412,17 @@ export function ChannelView() {
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
-      <header className="flex-shrink-0 border-b border-gray-200 bg-white h-16">
-        {renderHeader()}
-      </header>
+      <Header 
+        channelName={currentChannel.type === 'direct' 
+          ? (otherUser?.full_name || otherUser?.username || 'Unknown User')
+          : currentChannel.name
+        }
+        channelId={currentChannel.id}
+        topic={currentChannel.type === 'direct' 
+          ? `@${otherUser?.username || ''}`
+          : currentChannel.description
+        }
+      />
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-6">
