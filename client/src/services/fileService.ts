@@ -10,7 +10,30 @@ export interface FileUploadResponse {
 }
 
 export const fileService = {
-  async uploadFile(file: File): Promise<FileUploadResponse> {
+  async createFileRecord(
+    messageId: string,
+    fileData: FileUploadResponse
+  ): Promise<void> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('User not authenticated');
+
+    const { error } = await supabase
+      .from('files')
+      .insert({
+        message_id: messageId,
+        name: fileData.filename,
+        size: fileData.size,
+        mime_type: fileData.mimeType,
+        storage_path: fileData.path,
+        created_by: userData.user.id
+      });
+
+    if (error) {
+      throw new Error(`Error creating file record: ${error.message}`);
+    }
+  },
+
+  async uploadFile(file: File, messageId?: string): Promise<FileUploadResponse> {
     // Create a unique filename to prevent collisions
     const timestamp = new Date().getTime();
     const uniqueFilename = `${timestamp}-${file.name}`;
@@ -23,12 +46,19 @@ export const fileService = {
       throw new Error(`Error uploading file: ${error.message}`);
     }
 
-    return {
+    const fileData = {
       path: data.path,
       filename: file.name,
       size: file.size,
       mimeType: file.type,
     };
+
+    // If messageId is provided, create the file record
+    if (messageId) {
+      await this.createFileRecord(messageId, fileData);
+    }
+
+    return fileData;
   },
 
   async getFileUrl(path: string): Promise<string> {

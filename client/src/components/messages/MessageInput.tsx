@@ -45,11 +45,6 @@ export function MessageInput({ channelId, placeholder = 'Type a message...', dis
 
     try {
       setIsLoading(true);
-      let fileAttachment;
-
-      if (selectedFile) {
-        fileAttachment = await fileService.uploadFile(selectedFile);
-      }
 
       await messageService.sendMessage({
         content: message.trim(),

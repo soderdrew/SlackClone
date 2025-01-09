@@ -43,6 +43,26 @@ interface MessageWithRelations {
   };
 }
 
+interface MessageDetails {
+  id: string;
+  channel_id: string;
+  content: string;
+  channels: {
+    name: string;
+  };
+  profiles: {
+    username: string;
+    full_name?: string;
+  };
+}
+
+interface FileRecord {
+  id: string;
+  message_id: string;
+  name: string;
+  created_at: string;
+}
+
 class SearchService {
   async searchMessages(options: SearchOptions): Promise<SearchResult[]> {
     const { query, limit = 20 } = options;
@@ -99,21 +119,11 @@ class SearchService {
 
     console.log('Starting file search with query:', query);
 
-    // First, let's get a message with file attachments to see the structure
-    const { data: sampleMessage } = await supabase
-      .from('messages')
-      .select('*')
-      .not('file_attachment', 'is', null)
-      .limit(1);
-
-    console.log('Sample message with attachment:', sampleMessage);
-
-    // Search file attachments with proper select syntax
+    // Simple query to test files table access
     const { data: files, error } = await supabase
-      .from('messages')
-      .select('*, channels(*), profiles(*)')
-      .not('file_attachment', 'is', null)
-      .or(`file_attachment->filename.ilike.%${query}%,file_attachment->name.ilike.%${query}%`)
+      .from('files')
+      .select('*')
+      .ilike('name', `%${query}%`)
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -124,26 +134,15 @@ class SearchService {
 
     console.log('Files search results:', files);
 
-    return (files || []).flatMap((message: any) => {
-      if (!message.file_attachment) return [];
-      
-      const attachment = message.file_attachment;
-      console.log('Processing attachment:', attachment);
-
-      // Check both filename and name fields
-      const fileName = attachment.filename || attachment.name;
-      if (!fileName || !fileName.toLowerCase().includes(query.toLowerCase())) return [];
-
-      return [{
-        id: `${message.id}-${fileName}`,
-        type: 'file' as const,
-        title: fileName,
-        subtitle: `Shared by ${message.profiles?.full_name || message.profiles?.username || 'Unknown User'} in #${message.channels?.name || 'unknown-channel'}`,
-        channelId: message.channel_id,
-        timestamp: formatDistanceToNow(new Date(message.created_at), { addSuffix: true }),
-        matchingText: message.content
-      }];
-    });
+    return (files || []).map(file => ({
+      id: `${file.id}-${file.name}`,
+      type: 'file' as const,
+      title: file.name,
+      subtitle: 'File attachment',
+      channelId: 'unknown',
+      timestamp: formatDistanceToNow(new Date(file.created_at), { addSuffix: true }),
+      matchingText: ''
+    }));
   }
 
   async search(options: SearchOptions): Promise<SearchResult[]> {

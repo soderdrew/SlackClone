@@ -76,17 +76,16 @@ class MessageService {
     if (!userData.user) throw new Error('User not authenticated');
 
     let fileAttachment = null;
+    let uploadedFile = null;
+    
     if (messageData.file) {
-      fileAttachment = await fileService.uploadFile(messageData.file);
+      // First upload the file to storage
+      uploadedFile = await fileService.uploadFile(messageData.file);
+      fileAttachment = uploadedFile;
     }
 
-    console.log('Sending message:', {
-      channelId: messageData.channel_id,
-      isDM: this.isDMChannel(messageData.channel_id),
-      timestamp: new Date().toISOString()
-    });
-
-    const { data, error } = await supabase
+    // First, insert the message
+    const { data: newMessage, error: insertError } = await supabase
       .from('messages')
       .insert({
         content: messageData.content,
@@ -94,6 +93,21 @@ class MessageService {
         user_id: userData.user.id,
         file_attachment: fileAttachment
       })
+      .select('id')
+      .single();
+
+    if (insertError || !newMessage) {
+      throw new Error(`Error creating message: ${insertError?.message || 'No data returned'}`);
+    }
+
+    // If we have an uploaded file, create the file record using the new message ID
+    if (uploadedFile) {
+      await fileService.createFileRecord(newMessage.id, uploadedFile);
+    }
+
+    // Now fetch the complete message with user data
+    const { data: fullMessage, error: fetchError } = await supabase
+      .from('messages')
       .select(`
         id,
         content,
@@ -107,18 +121,15 @@ class MessageService {
           ${this.userProfileFields}
         )
       `)
+      .eq('id', newMessage.id)
       .single();
 
-    if (error) {
-      console.error('Error sending message:', {
-        channelId: messageData.channel_id,
-        error,
-        isDM: this.isDMChannel(messageData.channel_id)
-      });
-      throw error;
+    if (fetchError || !fullMessage) {
+      throw new Error(`Error fetching complete message: ${fetchError?.message || 'No data returned'}`);
     }
 
-    return data as unknown as Message;
+    const typedMessage = fullMessage as unknown as MessageRow;
+    return typedMessage as Message;
   }
 
   async updateMessage(messageId: string, content: string, removeFile: boolean = false): Promise<Message> {
