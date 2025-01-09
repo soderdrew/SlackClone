@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useAppSelector } from '../../hooks/redux';
+import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { Channel } from '../../types/channel';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { StartDMModal } from '../messages/StartDMModal';
@@ -8,6 +8,10 @@ import { CreateChannelModal } from '../channels/CreateChannelModal';
 import { userService } from '../../services/userService';
 import { realtimeService } from '../../services/realtimeService';
 import { SearchBar } from './SearchBar';
+import { StatusIndicator } from './StatusIndicator';
+import { UpdateStatusModal } from './UpdateStatusModal';
+import { UserStatus, UserPresence } from '../../types/user';
+import { usePresenceSubscription } from '../../hooks/usePresenceSubscription';
 
 interface DMChannel extends Channel {
   displayName: string;
@@ -60,40 +64,70 @@ const processDMChannels = async (channels: Channel[], currentUserId: string): Pr
 };
 
 export function Sidebar() {
-  const { channels } = useAppSelector((state) => state.channels);
-  const { user } = useAppSelector((state) => state.auth);
-  const [isDMsExpanded, setIsDMsExpanded] = useState(true);
-  const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
+  const dispatch = useAppDispatch();
   const [isStartDMModalOpen, setIsStartDMModalOpen] = useState(false);
   const [isCreateChannelModalOpen, setIsCreateChannelModalOpen] = useState(false);
-  const [dmChannels, setDmChannels] = useState<DMChannel[]>([]);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState<UserStatus>('online');
+  const [currentStatusMessage, setCurrentStatusMessage] = useState<string>('');
+  const [isDMsExpanded, setIsDMsExpanded] = useState(true);
+  const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const currentUser = useAppSelector(state => state.auth.user);
+  const channels = useAppSelector(state => state.channels.channels);
+  const [dmChannels, setDMChannels] = useState<DMChannel[]>([]);
+
+  // Handle presence updates
+  const handlePresenceUpdate = useCallback((update: { id: string; presence: UserPresence }) => {
+    if (currentUser?.id === update.id) {
+      setCurrentStatus(update.presence.status);
+      setCurrentStatusMessage(update.presence.status_message || '');
+    }
+  }, [currentUser?.id]); // Only depend on currentUser.id
+
+  // Subscribe to presence updates
+  usePresenceSubscription(handlePresenceUpdate);
+
+  useEffect(() => {
+    const fetchCurrentStatus = async () => {
+      if (currentUser?.id) {
+        try {
+          const presence = await userService.getCurrentUserStatus();
+          setCurrentStatus(presence.status);
+          setCurrentStatusMessage(presence.status_message || '');
+        } catch (error) {
+          console.error('Failed to fetch current status:', error);
+        }
+      }
+    };
+    fetchCurrentStatus();
+  }, [currentUser?.id]);
 
   // Initialize subscriptions when user logs in
   useEffect(() => {
-    if (user?.id) {
+    if (currentUser?.id) {
       // Subscribe to DM message updates
-      realtimeService.subscribeToDMUpdates(user.id);
+      realtimeService.subscribeToDMUpdates(currentUser.id);
       // Subscribe to channel updates (including new DMs)
-      realtimeService.subscribeToChannels(user.id);
+      realtimeService.subscribeToChannels(currentUser.id);
     }
 
     return () => {
       // Cleanup will be handled by realtimeService's cleanup method
     };
-  }, [user?.id]);
+  }, [currentUser?.id]);
 
   // Process DM channels when channels or user changes
   useEffect(() => {
     const loadDMChannels = async () => {
-      if (user && channels.length > 0) {
-        const processed = await processDMChannels(channels, user.id);
-        setDmChannels(processed);
+      if (currentUser && channels.length > 0) {
+        const processed = await processDMChannels(channels, currentUser.id);
+        setDMChannels(processed);
       }
     };
 
     loadDMChannels();
-  }, [channels, user]);
+  }, [channels, currentUser]);
 
   // Separate regular channels
   const regularChannels = channels.filter(channel => channel.type !== 'direct');
@@ -109,24 +143,28 @@ export function Sidebar() {
   );
 
   return (
-    <div className="w-64 bg-gray-900 flex-shrink-0 h-full flex flex-col">
-      {/* Header */}
-      <div className="h-16 bg-gray-900 border-b border-gray-800 flex items-center px-4">
-        <h1 className="text-white font-semibold text-lg">ChatGenius</h1>
-      </div>
+    <div className="bg-gray-900 text-white w-64 flex-shrink-0 h-screen overflow-y-auto">
+      <div className="p-4">
+        <h1 className="text-xl font-bold mb-4">Workspace Name</h1>
+        
+        {/* Status Button */}
+        <button
+          onClick={() => setIsStatusModalOpen(true)}
+          className="flex items-center space-x-2 text-gray-300 hover:text-white mb-6 w-full"
+        >
+          <StatusIndicator status={currentStatus} />
+          <span className="text-sm truncate">
+            {currentStatusMessage || 'Set a status'}
+          </span>
+        </button>
 
-      {/* Search Bar */}
-      <div className="px-3 py-2">
         <SearchBar
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search channels and DMs..."
-          className="mb-2"
+          placeholder="Search channels..."
+          className="mb-4"
         />
-      </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto">
         {/* Channels Section */}
         <div className="px-3 py-2">
           <button
@@ -226,6 +264,15 @@ export function Sidebar() {
       <CreateChannelModal
         isOpen={isCreateChannelModalOpen}
         onClose={() => setIsCreateChannelModalOpen(false)}
+      />
+
+      {/* Status Modal */}
+      <UpdateStatusModal
+        isOpen={isStatusModalOpen}
+        onClose={() => setIsStatusModalOpen(false)}
+        currentStatus={currentStatus}
+        currentStatusMessage={currentStatusMessage}
+        userId={currentUser?.id || ''}
       />
     </div>
   );

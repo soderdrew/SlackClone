@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { User, UserPresence, UserStatus } from '../types/user';
-import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface PresenceUpdate {
   id: string;
@@ -21,8 +21,13 @@ export const usePresenceSubscription = (
   onPresenceUpdate: (update: PresenceUpdate) => void
 ) => {
   const [isConnected, setIsConnected] = useState(false);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
+    if (channelRef.current) {
+      return;
+    }
+
     console.log('Setting up presence subscription...');
     
     const channel = supabase
@@ -30,71 +35,53 @@ export const usePresenceSubscription = (
       .on(
         'postgres_changes',
         {
-          event: '*',  // Listen for all events (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'profiles'
         },
         (payload) => {
-          console.log('Received database event:', payload.eventType);
-          console.log('Full payload:', payload);
+          console.log('Received database event:', payload);
+          const newData = payload.new as ProfileRow | null;
           
-          // Type assertion since we know the shape of our data
-          const updated = (payload.new || {}) as ProfileRow;
-          const previous = (payload.old || {}) as Partial<ProfileRow>;
-          
-          // Only process status-related changes
-          if (updated.status && (
-              !previous.status ||
-              updated.status !== previous.status || 
-              updated.status_message !== previous.status_message ||
-              updated.online_at !== previous.online_at
-          )) {
+          if (newData?.status) {
+            console.log('Processing status update:', {
+              userId: newData.id,
+              status: newData.status,
+              statusMessage: newData.status_message
+            });
+            
             const presenceUpdate: PresenceUpdate = {
-              id: updated.id,
+              id: newData.id,
               presence: {
-                status: updated.status,
-                status_message: updated.status_message,
-                online_at: updated.online_at
+                status: newData.status,
+                status_message: newData.status_message,
+                online_at: newData.online_at
               }
             };
             
-            console.log('Processing presence update:', {
-              previous: previous ? {
-                status: previous.status,
-                status_message: previous.status_message,
-                online_at: previous.online_at
-              } : null,
-              updated: presenceUpdate
-            });
-            
+            console.log('Sending presence update:', presenceUpdate);
             onPresenceUpdate(presenceUpdate);
           } else {
-            console.log('Ignoring non-presence related update');
+            console.log('Ignoring update - no status data:', payload);
           }
         }
       );
 
-    // Subscribe to the channel
+    channelRef.current = channel;
+
     channel.subscribe((status: SubscriptionStatus) => {
       console.log('Channel subscription status:', status);
-      if (status === 'SUBSCRIBED') {
-        console.log('Successfully subscribed to presence updates');
-        setIsConnected(true);
-      } else if (status === 'CLOSED') {
-        console.log('Presence subscription closed');
-        setIsConnected(false);
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error('Error subscribing to presence updates');
-        setIsConnected(false);
-      }
+      setIsConnected(status === 'SUBSCRIBED');
     });
 
-    // Cleanup subscription on unmount
     return () => {
       console.log('Cleaning up presence subscription');
-      channel.unsubscribe();
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        channelRef.current = null;
+      }
     };
-  }, [onPresenceUpdate]);
+  }, []); // Empty dependency array since we're using refs
 
   return isConnected;
 }; 

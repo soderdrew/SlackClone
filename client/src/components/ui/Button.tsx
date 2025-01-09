@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes, ReactNode } from 'react';
+import { ButtonHTMLAttributes, ReactNode, forwardRef } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../utils/cn';
 import { Spinner } from './Spinner';
@@ -40,30 +40,22 @@ interface ButtonProps
   isLoading?: boolean;
 }
 
-export function Button({
-  className,
-  variant,
-  size,
-  fullWidth,
-  children,
-  isLoading = false,
-  disabled,
-  ...props
-}: ButtonProps) {
-  return (
-    <button
-      className={cn(buttonVariants({ variant, size, fullWidth, className }))}
-      disabled={isLoading || disabled}
-      {...props}
-    >
-      {isLoading ? (
-        <span className="flex items-center space-x-2">
-          <Spinner size="sm" />
-          <span>Loading...</span>
-        </span>
-      ) : (
-        children
-      )}
-    </button>
-  );
-} 
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, fullWidth, children, isLoading = false, disabled, ...props }, ref) => {
+    return (
+      <button
+        className={cn(buttonVariants({ variant, size, fullWidth, className }))}
+        ref={ref}
+        disabled={disabled || isLoading}
+        {...props}
+      >
+        {isLoading && <Spinner className="mr-2" />}
+        {children}
+      </button>
+    );
+  }
+);
+
+Button.displayName = 'Button';
+
+export { Button, buttonVariants }; 

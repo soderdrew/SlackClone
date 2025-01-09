@@ -2,6 +2,7 @@ import { api } from '../lib/api';
 import { Channel, CreateChannelData } from '../types/channel';
 import { ChannelMember } from '../types/channel';
 import { supabase } from '../lib/supabase';
+import { UserStatus } from '../types/user';
 
 interface RawChannelMember {
   id: string;
@@ -198,7 +199,10 @@ class ChannelService {
             id,
             username,
             full_name,
-            avatar_url
+            avatar_url,
+            status,
+            status_message,
+            online_at
           )
         `)
         .eq('channel_id', channelId);
@@ -214,11 +218,15 @@ class ChannelService {
           username: string;
           full_name?: string;
           avatar_url?: string;
+          status?: UserStatus;
+          status_message?: string;
+          online_at?: string;
         };
 
         return {
           id: profile.id,
           user_id: member.user_id,
+          channel_id: channelId,
           role: member.role as 'admin' | 'member',
           username: profile.username,
           full_name: profile.full_name,
@@ -227,7 +235,12 @@ class ChannelService {
             id: profile.id,
             username: profile.username,
             full_name: profile.full_name,
-            avatar_url: profile.avatar_url
+            avatar_url: profile.avatar_url,
+            presence: {
+              status: (profile.status as UserStatus) || 'offline',
+              status_message: profile.status_message,
+              online_at: profile.online_at
+            }
           }
         };
       });

@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { Channel } from '../../types/channel';
 import { ChannelMember } from '../../types/channel';
 import { channelService } from '../../services/channelService';
@@ -117,6 +117,48 @@ export const channelsSlice = createSlice({
           .filter((member: ChannelMember) => member.id !== memberId);
       }
     },
+    updateChannelMemberPresence(
+      state,
+      action: PayloadAction<UpdatePresencePayload>
+    ) {
+      const { channelId, userId, presence } = action.payload;
+      console.log('Updating channel member presence:', {
+        channelId,
+        userId,
+        presence,
+        hasMembers: !!state.channelMembers[channelId]
+      });
+
+      if (state.channelMembers[channelId]) {
+        const updatedMembers = state.channelMembers[channelId].map(member => {
+          if (member.user?.id === userId || member.user_id === userId) {
+            const updatedMember = {
+              ...member,
+              user: member.user ? {
+                ...member.user,
+                presence: { ...presence }
+              } : {
+                id: userId,
+                username: member.username || 'unknown',
+                presence: { ...presence }
+              }
+            };
+            console.log('Member before update:', member);
+            console.log('Member after update:', updatedMember);
+            return updatedMember;
+          }
+          return member;
+        });
+
+        // Log the entire members array before and after update
+        console.log('Members before state update:', state.channelMembers[channelId]);
+        state.channelMembers = {
+          ...state.channelMembers,
+          [channelId]: updatedMembers
+        };
+        console.log('Members after state update:', state.channelMembers[channelId]);
+      }
+    },
     setMemberLoading(
       state,
       action: PayloadAction<{ channelId: string; isLoading: boolean }>
@@ -135,21 +177,6 @@ export const channelsSlice = createSlice({
     setError(state, action: PayloadAction<string | null>) {
       state.error = action.payload;
     },
-    updateChannelMemberPresence: (state, action: PayloadAction<UpdatePresencePayload>) => {
-      const { channelId, userId, presence } = action.payload;
-      
-      // Update member in the channelMembers state
-      const members = state.channelMembers[channelId];
-      if (!members) return;
-
-      const member = members.find(m => 
-        m.user_id === userId || (m.user && m.user.id === userId)
-      );
-      
-      if (member && member.user) {
-        member.user.presence = presence;
-      }
-    }
   },
 });
 
@@ -160,19 +187,26 @@ export const {
   setChannelMembers,
   addChannelMember,
   removeChannelMember,
+  updateChannelMemberPresence,
   setMemberLoading,
   setMemberError,
   setLoading,
   setError,
-  updateChannelMemberPresence,
 } = channelsSlice.actions;
 
-// Selector to get members for a specific channel
-export const selectChannelMembers = (state: { channels: ChannelState }, channelId: string): ChannelMember[] => 
-  state.channels.channelMembers[channelId] || [];
+// Selector to get all channel members
+const selectChannelMembersState = (state: { channels: ChannelState }) => state.channels.channelMembers;
+
+// Memoized selector for channel members
+export const selectChannelMembers = createSelector(
+  [selectChannelMembersState, (_state, channelId: string) => channelId],
+  (channelMembers, channelId) => channelMembers[channelId] || []
+);
 
 // Selector to get loading state for members of a specific channel
-export const selectChannelMembersLoading = (state: { channels: ChannelState }, channelId: string): boolean => 
-  state.channels.isLoadingMembers[channelId] || false;
+export const selectChannelMembersLoading = createSelector(
+  [(state: { channels: ChannelState }) => state.channels.isLoadingMembers, (_state, channelId: string) => channelId],
+  (loadingStates, channelId) => loadingStates[channelId] || false
+);
 
 export default channelsSlice.reducer; 
