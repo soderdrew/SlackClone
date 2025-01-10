@@ -4,13 +4,13 @@ A modern real-time chat application inspired by Slack, built with React, TypeScr
 
 ## Features
 
-- 💬 Real-time messaging with threads
+- 💬 Real-time messaging (with threads coming soon, hopefully)
 - 🔒 Secure authentication with email and OAuth
 - 📂 File sharing and preview
 - 🔍 Full-text search capabilities
-- 👥 User presence and status
-- 😊 Emoji reactions and custom emojis
-- 📱 Responsive design for all devices
+- 👥 User presence and status (soon to be real time)
+- 😊 Emoji reactions and custom emojis (coming soon)
+- 📱 Responsive design for all devices 
 
 ## Tech Stack
 
