@@ -134,5 +134,46 @@ export const userService = {
       console.error('Error in getCurrentUserStatus:', error);
       throw error;
     }
+  },
+
+  // Create a new user profile if it doesn't exist
+  async createProfileIfNotExists(userId: string, email: string, full_name?: string): Promise<void> {
+    try {
+      // First check if profile exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single();
+
+      if (existingProfile) {
+        console.log('Profile already exists for user:', userId);
+        return;
+      }
+
+      // Create new profile with default status
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: userId,
+            username: email.split('@')[0], // Use email prefix as username
+            full_name: full_name || email.split('@')[0],
+            status: 'offline', // Changed to lowercase to match existing convention
+            status_message: '', // Add empty status message
+            online_at: new Date().toISOString(),
+          },
+        ]);
+
+      if (insertError) {
+        console.error('Error creating user profile:', insertError);
+        throw insertError;
+      }
+
+      console.log('Created new profile for user:', userId);
+    } catch (error) {
+      console.error('Error in createProfileIfNotExists:', error);
+      throw error;
+    }
   }
 }; 

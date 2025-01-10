@@ -36,7 +36,7 @@ export function EmailConfirmation() {
           const credentials = JSON.parse(credentialsStr);
 
           // Attempt to sign in with our backend
-          const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+          const response = await fetch(`${API_BASE_URL}/api/auth/signin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(credentials),

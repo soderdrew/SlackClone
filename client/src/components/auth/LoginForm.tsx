@@ -8,6 +8,7 @@ import { Label } from '../ui/Label';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { useToast } from '../../hooks/useToast';
 import { supabase } from '../../lib/supabase';
+import { userService } from '../../services/userService';
 
 export function LoginForm() {
   const dispatch = useAppDispatch();
@@ -65,6 +66,20 @@ export function LoginForm() {
       });
 
       if (error) throw error;
+
+      // Get stored credentials for full name if they exist (from signup flow)
+      const storedCredentials = sessionStorage.getItem('pendingCredentials');
+      const parsedCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+
+      // Create profile if it doesn't exist (for first-time logins)
+      await userService.createProfileIfNotExists(
+        data.user.id,
+        data.user.email!,
+        parsedCredentials?.full_name || data.user.user_metadata?.full_name
+      );
+
+      // Clear stored credentials after successful profile creation
+      sessionStorage.removeItem('pendingCredentials');
 
       dispatch(setCredentials({
         user: data.user,

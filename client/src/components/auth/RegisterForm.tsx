@@ -110,7 +110,8 @@ export function RegisterForm() {
       // Store credentials in sessionStorage (will be cleared when browser is closed)
       sessionStorage.setItem('pendingCredentials', JSON.stringify({
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        full_name: formData.full_name
       }));
 
       navigate('/confirm-email');
