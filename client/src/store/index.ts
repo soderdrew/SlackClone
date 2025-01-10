@@ -24,19 +24,6 @@ export const store = configureStore({
   },
 });
 
-// Enhanced debugging in development
-if (process.env.NODE_ENV === 'development') {
-  store.subscribe(() => {
-    const state = store.getState();
-    const timestamp = new Date().toISOString();
-    
-    // Log message counts by channel
-    const messageCounts = Object.entries(state.messages.messages).map(([channelId, messages]) => ({
-      channelId,
-      count: messages?.length || 0,
-    }));
-  });
-}
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch; 

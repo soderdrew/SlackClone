@@ -2,7 +2,7 @@ import { createSlice, PayloadAction, createAsyncThunk, createSelector } from '@r
 import { Channel } from '../../types/channel';
 import { ChannelMember } from '../../types/channel';
 import { channelService } from '../../services/channelService';
-import { UserPresence, UserStatus } from '../../types/user';
+import { UserPresence } from '../../types/user';
 
 // Async thunk for fetching channels
 export const fetchChannels = createAsyncThunk(

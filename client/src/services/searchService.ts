@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase';
-import { Message } from '../types/message';
 import { formatDistanceToNow } from 'date-fns';
 
 interface SearchOptions {
@@ -16,51 +15,6 @@ interface SearchResult {
   channelId: string;
   timestamp: string;
   matchingText?: string;
-}
-
-interface FileAttachment {
-  name: string;
-  url: string;
-  type: string;
-  size: number;
-}
-
-interface MessageWithRelations {
-  id: string;
-  content: string;
-  created_at: string;
-  channel_id: string;
-  user_id: string;
-  file_attachments: FileAttachment[] | null;
-  channels: {
-    name: string;
-    type: string;
-  };
-  users: {
-    username: string;
-    full_name: string;
-    avatar_url: string;
-  };
-}
-
-interface MessageDetails {
-  id: string;
-  channel_id: string;
-  content: string;
-  channels: {
-    name: string;
-  };
-  profiles: {
-    username: string;
-    full_name?: string;
-  };
-}
-
-interface FileRecord {
-  id: string;
-  message_id: string;
-  name: string;
-  created_at: string;
 }
 
 class SearchService {

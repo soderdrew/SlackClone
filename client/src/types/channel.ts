@@ -2,13 +2,6 @@ import { User } from './user';
 
 export type ChannelType = 'public' | 'private' | 'direct';
 
-interface ChannelMemberProfile {
-  id: string;
-  username: string;
-  full_name?: string;
-  avatar_url?: string;
-}
-
 export interface ChannelMember {
   id?: string;
   user_id?: string;

@@ -2,7 +2,6 @@ import { useState, useEffect, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import { useAppSelector } from '../../hooks/redux';
 import { searchService } from '../../services/searchService';
 
 interface SearchResult {

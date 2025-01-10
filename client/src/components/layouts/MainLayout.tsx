@@ -2,8 +2,7 @@ import { ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../ui/Sidebar';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
-import { channelService } from '../../services/channelService';
-import { setChannelMembers, fetchChannels } from '../../features/channels/channelsSlice';
+import { fetchChannels } from '../../features/channels/channelsSlice';
 
 interface MainLayoutProps {
   children: ReactNode;

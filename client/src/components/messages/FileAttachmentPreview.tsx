@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileAttachment } from '../../types/message';
 import { fileService } from '../../services/fileService';
-import { DocumentIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { DocumentIcon } from '@heroicons/react/24/outline';
 
 interface FileAttachmentPreviewProps {
   attachment: FileAttachment;

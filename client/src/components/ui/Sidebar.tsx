@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useAppSelector, useAppDispatch } from '../../hooks/redux';
+import { useAppSelector } from '../../hooks/redux';
 import { Channel } from '../../types/channel';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { StartDMModal } from '../messages/StartDMModal';
@@ -64,7 +64,6 @@ const processDMChannels = async (channels: Channel[], currentUserId: string): Pr
 };
 
 export function Sidebar() {
-  const dispatch = useAppDispatch();
   const [isStartDMModalOpen, setIsStartDMModalOpen] = useState(false);
   const [isCreateChannelModalOpen, setIsCreateChannelModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);

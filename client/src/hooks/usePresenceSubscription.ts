@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { User, UserPresence, UserStatus } from '../types/user';
+import { UserPresence, UserStatus } from '../types/user';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface PresenceUpdate {

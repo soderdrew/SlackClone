@@ -2,7 +2,6 @@ import { useState, KeyboardEvent, useRef } from 'react';
 import { useAppDispatch } from '../../hooks/redux';
 import { setError } from '../../features/messages/messagesSlice';
 import { messageService } from '../../services/messageService';
-import { fileService } from '../../services/fileService';
 import { useToast } from '../../hooks/useToast';
 import { PaperClipIcon, XMarkIcon, DocumentIcon, PhotoIcon } from '@heroicons/react/24/outline';
 

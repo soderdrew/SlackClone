@@ -1,15 +1,13 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { useParams } from 'react-router-dom';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Message, SendMessageData } from '../../types/message';
-import { addMessage, setChannelMessages, setLoading } from '../../features/messages/messagesSlice';
+import { Message } from '../../types/message';
+import { setChannelMessages, setLoading } from '../../features/messages/messagesSlice';
 import { setCurrentChannel, fetchChannelMembers, selectChannelMembers } from '../../features/channels/channelsSlice';
 import { messageService } from '../../services/messageService';
 import { channelService } from '../../services/channelService';
 import { realtimeService } from '../../services/realtimeService';
-import { formatDistanceToNow } from 'date-fns';
 import { MessageContent } from '../messages/MessageContent';
 import { MessageActions } from '../messages/MessageActions';
 import { FileAttachmentPreview } from '../messages/FileAttachmentPreview';
@@ -77,8 +75,7 @@ export function ChannelView() {
   const { user } = useAppSelector((state) => state.auth);
   const members = useAppSelector(state => selectChannelMembers(state, channelId || ''));
   
-  // Local state for new message input
-  const [newMessage, setNewMessage] = useState('');
+  // Local state
   const [isJoining, setIsJoining] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [otherUser, setOtherUser] = useState<DMUser | null>(null);
@@ -179,25 +176,6 @@ export function ChannelView() {
       }
     };
   }, [currentChannel?.id, dispatch]);
-
-  // Handle sending a new message
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !currentChannel || !user) return;
-
-    try {
-      const messageData: SendMessageData = {
-        content: newMessage,
-        channel_id: currentChannel.id,
-      };
-
-      const message: Message = await messageService.sendMessage(messageData);
-      dispatch(addMessage(message));
-      setNewMessage('');
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    }
-  };
 
   // Format timestamp to show full date and time
   const formatMessageTime = (timestamp: string) => {
@@ -318,7 +296,7 @@ export function ChannelView() {
       ) {
         try {
           setIsJoining(true);
-          const response = await channelService.joinChannel(currentChannel.id);
+          await channelService.joinChannel(currentChannel.id);
           
           // Always refresh the channel state, even if we were already a member
           const updatedChannel = await channelService.getChannel(currentChannel.id);

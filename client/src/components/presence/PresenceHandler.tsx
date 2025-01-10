@@ -3,7 +3,6 @@ import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { usePresenceSubscription } from '../../hooks/usePresenceSubscription';
 import { updateChannelMemberPresence, fetchChannelMembers } from '../../features/channels/channelsSlice';
 import { UserPresence } from '../../types/user';
-import { Channel } from '../../types/channel';
 
 export const PresenceHandler: FC = () => {
   const dispatch = useAppDispatch();

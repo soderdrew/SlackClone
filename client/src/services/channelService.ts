@@ -4,29 +4,6 @@ import { ChannelMember } from '../types/channel';
 import { supabase } from '../lib/supabase';
 import { UserStatus } from '../types/user';
 
-interface RawChannelMember {
-  id: string;
-  user_id: string;
-  role: 'admin' | 'member';
-  profiles: {
-    id: string;
-    username: string;
-    full_name?: string;
-    avatar_url?: string;
-  };
-}
-
-interface MemberResponse {
-  user_id: string;
-  role: 'admin' | 'member';
-  profiles: {
-    id: string;
-    username: string;
-    full_name?: string;
-    avatar_url?: string;
-  };
-}
-
 class ChannelService {
   async createChannel(data: CreateChannelData): Promise<Channel> {
     try {

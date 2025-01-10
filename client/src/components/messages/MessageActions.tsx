@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Message } from '../../types/message';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Tooltip } from '../ui/Tooltip';
 import { messageService } from '../../services/messageService';
 import { useAppDispatch } from '../../hooks/redux';
 import { updateMessage, deleteMessage } from '../../features/messages/messagesSlice';

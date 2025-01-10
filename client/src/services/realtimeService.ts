@@ -103,7 +103,7 @@ class RealtimeService {
         );
 
       // Subscribe and handle status
-      const status = await channel.subscribe((status) => {
+      await channel.subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           // Refresh messages after successful subscription
           messageService.getChannelMessages(channelId).then(messages => {
@@ -178,7 +178,7 @@ class RealtimeService {
         }
       );
 
-    const status = await channel.subscribe();
+    await channel.subscribe();
     this.dmSubscription = channel;
     return channel;
   }
@@ -231,7 +231,7 @@ class RealtimeService {
         }
       );
 
-    const status = await channel.subscribe();
+    await channel.subscribe();
     this.channelSubscription = channel;
     return channel;
   }
