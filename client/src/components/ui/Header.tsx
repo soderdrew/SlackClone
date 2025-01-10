@@ -46,7 +46,6 @@ const MemberAvatar = memo(({ member, currentUserId }: { member: ChannelMember; c
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Only re-render if relevant properties change
   return (
     prevProps.currentUserId === nextProps.currentUserId &&
     prevProps.member.user?.id === nextProps.member.user?.id &&
@@ -60,59 +59,44 @@ MemberAvatar.displayName = 'MemberAvatar';
 const MembersList = memo(({ members }: { members: ChannelMember[] }) => {
   const currentUser = useAppSelector(state => state.auth.user);
 
-  useEffect(() => {
-    console.log('MembersList received new members:', members);
-  }, [members]);
-
   return (
     <div className="space-y-1">
-      {members?.map((member) => {
-        console.log('Rendering member:', member.id, member.user?.presence);
-        return (
-          <div
-            key={member.id || member.user_id}
-            className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md"
-          >
-            <MemberAvatar member={member} currentUserId={currentUser?.id} />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {getMemberDisplayName(member)}
-              </p>
-              <div className="flex items-center space-x-2">
-                {getMemberUsername(member) && (
-                  <p className="text-xs text-gray-500 truncate">@{getMemberUsername(member)}</p>
-                )}
-                {member.user?.presence?.status_message && (
-                  <p className="text-xs text-gray-500 truncate">• {member.user.presence.status_message}</p>
-                )}
-              </div>
+      {members?.map((member) => (
+        <div
+          key={member.id || member.user_id}
+          className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md"
+        >
+          <MemberAvatar member={member} currentUserId={currentUser?.id} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {getMemberDisplayName(member)}
+            </p>
+            <div className="flex items-center space-x-2">
+              {getMemberUsername(member) && (
+                <p className="text-xs text-gray-500 truncate">@{getMemberUsername(member)}</p>
+              )}
+              {member.user?.presence?.status_message && (
+                <p className="text-xs text-gray-500 truncate">• {member.user.presence.status_message}</p>
+              )}
             </div>
-            {member.role === 'admin' && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                Admin
-              </span>
-            )}
           </div>
-        );
-      })}
+          {member.role === 'admin' && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+              Admin
+            </span>
+          )}
+        </div>
+      ))}
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Deep comparison of members array
-  const areEqual = prevProps.members.length === nextProps.members.length &&
+  return prevProps.members.length === nextProps.members.length &&
     prevProps.members.every((prevMember, index) => {
       const nextMember = nextProps.members[index];
       return prevMember.id === nextMember.id &&
         prevMember.user?.presence?.status === nextMember.user?.presence?.status &&
         prevMember.user?.presence?.status_message === nextMember.user?.presence?.status_message;
     });
-    
-  console.log('MembersList memo comparison:', { 
-    areEqual,
-    prevLength: prevProps.members?.length,
-    nextLength: nextProps.members?.length
-  });
-  return areEqual;
 });
 
 MembersList.displayName = 'MembersList';
@@ -122,18 +106,8 @@ const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
   const members = useAppSelector(state => selectChannelMembers(state, channelId));
   const isLoadingMembers = useAppSelector(state => selectChannelMembersLoading(state, channelId));
 
-  // Debug effect for members
-  useEffect(() => {
-    console.log('Header members state:', {
-      channelId,
-      memberCount: members?.length,
-      members: members
-    });
-  }, [members, channelId]);
-
   useEffect(() => {
     if (channelId) {
-      console.log('Fetching members for channel:', channelId);
       dispatch(fetchChannelMembers(channelId));
     }
   }, [channelId, dispatch]);

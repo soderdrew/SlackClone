@@ -122,17 +122,11 @@ export const channelsSlice = createSlice({
       action: PayloadAction<UpdatePresencePayload>
     ) {
       const { channelId, userId, presence } = action.payload;
-      console.log('Updating channel member presence:', {
-        channelId,
-        userId,
-        presence,
-        hasMembers: !!state.channelMembers[channelId]
-      });
 
       if (state.channelMembers[channelId]) {
         const updatedMembers = state.channelMembers[channelId].map(member => {
           if (member.user?.id === userId || member.user_id === userId) {
-            const updatedMember = {
+            return {
               ...member,
               user: member.user ? {
                 ...member.user,
@@ -143,20 +137,14 @@ export const channelsSlice = createSlice({
                 presence: { ...presence }
               }
             };
-            console.log('Member before update:', member);
-            console.log('Member after update:', updatedMember);
-            return updatedMember;
           }
           return member;
         });
 
-        // Log the entire members array before and after update
-        console.log('Members before state update:', state.channelMembers[channelId]);
         state.channelMembers = {
           ...state.channelMembers,
           [channelId]: updatedMembers
         };
-        console.log('Members after state update:', state.channelMembers[channelId]);
       }
     },
     setMemberLoading(

@@ -27,8 +27,6 @@ export const usePresenceSubscription = (
     if (channelRef.current) {
       return;
     }
-
-    console.log('Setting up presence subscription...');
     
     const channel = supabase
       .channel('presence_updates')
@@ -40,16 +38,9 @@ export const usePresenceSubscription = (
           table: 'profiles'
         },
         (payload) => {
-          console.log('Received database event:', payload);
           const newData = payload.new as ProfileRow | null;
           
           if (newData?.status) {
-            console.log('Processing status update:', {
-              userId: newData.id,
-              status: newData.status,
-              statusMessage: newData.status_message
-            });
-            
             const presenceUpdate: PresenceUpdate = {
               id: newData.id,
               presence: {
@@ -59,10 +50,7 @@ export const usePresenceSubscription = (
               }
             };
             
-            console.log('Sending presence update:', presenceUpdate);
             onPresenceUpdate(presenceUpdate);
-          } else {
-            console.log('Ignoring update - no status data:', payload);
           }
         }
       );
@@ -70,12 +58,10 @@ export const usePresenceSubscription = (
     channelRef.current = channel;
 
     channel.subscribe((status: SubscriptionStatus) => {
-      console.log('Channel subscription status:', status);
       setIsConnected(status === 'SUBSCRIBED');
     });
 
     return () => {
-      console.log('Cleaning up presence subscription');
       if (channelRef.current) {
         channelRef.current.unsubscribe();
         channelRef.current = null;
