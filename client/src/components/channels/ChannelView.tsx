@@ -352,6 +352,11 @@ export function ChannelView() {
           </h2>
           <p className="text-gray-600">
             You'll be automatically connected to the #general channel in a moment.
+            {import.meta.env.VITE_API_URL?.includes('render.com') && (
+              <span className="block mt-2 text-sm text-gray-500">
+                Note: First connection may take up to 30 seconds while our server wakes up. Thanks for your patience! 🚀
+              </span>
+            )}
           </p>
         </div>
       </div>

@@ -1,5 +1,6 @@
 # ChatGenius
 
+Live website: https://slack-clone-silk-one.vercel.app/channels/c1b95e3d-7682-4f96-9fb5-c8f4cf1c0423
 A modern real-time chat application inspired by Slack, built with React, TypeScript, and Supabase.
 
 ## Features
