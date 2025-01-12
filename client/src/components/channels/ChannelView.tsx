@@ -235,20 +235,24 @@ export function ChannelView() {
                 />
               ) : (
                 <>
-                  <div className="flex justify-between items-start group pr-4">
-                    <div className="text-gray-900 break-words flex-1 mr-4">
-                      <MessageContent content={message.content} />
+                  <div className="relative w-full pr-4">
+                    <div className="text-gray-900 break-words pr-24">
+                      {message.content && <MessageContent content={message.content} />}
                       {message.file_attachment && (
                         <FileAttachmentPreview attachment={message.file_attachment} />
                       )}
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {message.is_edited && (
-                        <span className="text-xs text-gray-500">
+                    {/* Edited tag - always on the far right */}
+                    {message.is_edited && (
+                      <div className="absolute right-4 top-0">
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
                           (edited)
                         </span>
-                      )}
-                      {!isEditing && (
+                      </div>
+                    )}
+                    {/* Message actions - positioned to the left of edited tag */}
+                    {!isEditing && (
+                      <div className="absolute right-16 top-0">
                         <MessageActions
                           message={message}
                           currentUserId={user?.id || ''}
@@ -256,8 +260,8 @@ export function ChannelView() {
                           onStartEdit={() => setEditingMessageId(message.id)}
                           onFinishEdit={() => setEditingMessageId(null)}
                         />
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
