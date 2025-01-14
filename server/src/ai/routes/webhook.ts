@@ -1,0 +1,71 @@
+import { Router } from 'express';
+import { handleNewMessage, handleMessageUpdate, handleMessageDeletion } from '../services/messageHandler';
+
+const router = Router();
+
+// Verify webhook request is from Supabase
+const verifyWebhookSecret = (req: any, res: any, next: any) => {
+  const webhookSecret = process.env.SUPABASE_WEBHOOK_SECRET;
+  const providedSecret = req.headers['x-webhook-secret'];
+
+  if (!webhookSecret) {
+    console.error('SUPABASE_WEBHOOK_SECRET not configured');
+    return res.status(500).json({ error: 'Webhook secret not configured' });
+  }
+
+  if (providedSecret !== webhookSecret) {
+    console.error('Invalid webhook secret provided');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  next();
+};
+
+/**
+ * Webhook endpoint to handle Supabase realtime events for messages
+ * This endpoint will be called by Supabase when messages are created/updated/deleted
+ */
+router.post('/message-events', verifyWebhookSecret, async (req, res) => {
+  try {
+    const { type, record, old_record } = req.body;
+    console.log('Webhook received:', {
+      type,
+      messageId: record?.id || old_record?.id,
+      oldContent: old_record?.content,
+      newContent: record?.content
+    });
+    
+    switch (type) {
+      case 'INSERT':
+        await handleNewMessage(record);
+        break;
+      
+      case 'UPDATE':
+        console.log('Processing UPDATE event:', {
+          messageId: record.id,
+          oldContent: old_record?.content,
+          newContent: record.content,
+          isEdited: record.is_edited
+        });
+        await handleMessageUpdate(record);
+        break;
+      
+      case 'DELETE':
+        await handleMessageDeletion(old_record.id);
+        break;
+      
+      default:
+        console.warn(`Unhandled event type: ${type}`);
+    }
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error processing message event:', error);
+    res.status(500).json({ 
+      error: 'Failed to process message event',
+      details: error.message || 'Unknown error'
+    });
+  }
+});
+
+export default router; 
