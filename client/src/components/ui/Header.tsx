@@ -1,4 +1,4 @@
-import { FC, useEffect, memo } from 'react';
+import { FC, useEffect, memo, useState } from 'react';
 import { Popover } from '@headlessui/react';
 import { UsersIcon } from '@heroicons/react/24/outline';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -7,6 +7,8 @@ import { Button } from './Button';
 import { ChannelMember } from '../../types/channel';
 import { GlobalSearch } from '../search/GlobalSearch';
 import { StatusIndicator } from './StatusIndicator';
+import { AIIcon } from '../icons/AIIcon';
+import { AIModal } from '../ai/AIModal';
 
 interface HeaderProps {
   channelName: string;
@@ -105,6 +107,7 @@ const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
   const dispatch = useAppDispatch();
   const members = useAppSelector(state => selectChannelMembers(state, channelId));
   const isLoadingMembers = useAppSelector(state => selectChannelMembersLoading(state, channelId));
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
   useEffect(() => {
     if (channelId) {
@@ -124,6 +127,14 @@ const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
       <div className="flex items-center space-x-4">
         <GlobalSearch />
         
+        <Button 
+          variant="ghost" 
+          className="p-2"
+          onClick={() => setIsAIModalOpen(true)}
+        >
+          <AIIcon className="h-5 w-5" />
+        </Button>
+        
         <Popover className="relative">
           <Popover.Button as={Button} variant="ghost">
             <UsersIcon className="h-5 w-5" />
@@ -141,6 +152,12 @@ const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
             </div>
           </Popover.Panel>
         </Popover>
+
+        <AIModal 
+          isOpen={isAIModalOpen}
+          onClose={() => setIsAIModalOpen(false)}
+          channelId={channelId}
+        />
       </div>
     </header>
   );
