@@ -38,6 +38,7 @@ router.post('/message-events', verifyWebhookSecret, async (req, res) => {
     switch (type) {
       case 'INSERT':
         await handleNewMessage(record);
+        await new Promise(resolve => setTimeout(resolve, 1000));
         break;
       
       case 'UPDATE':
@@ -48,10 +49,12 @@ router.post('/message-events', verifyWebhookSecret, async (req, res) => {
           isEdited: record.is_edited
         });
         await handleMessageUpdate(record);
+        await new Promise(resolve => setTimeout(resolve, 1000));
         break;
       
       case 'DELETE':
         await handleMessageDeletion(old_record.id);
+        await new Promise(resolve => setTimeout(resolve, 500));
         break;
       
       default:
