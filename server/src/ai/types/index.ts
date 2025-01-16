@@ -10,15 +10,18 @@ export interface EmbeddingMetadata {
   updatedAt?: string;
 }
 
+export interface Source {
+  content: string;
+  createdAt: string;
+  userId: string;
+  channelId: string;
+  score: number;
+  isEdited?: boolean;
+}
+
 export interface AIQueryResponse {
   answer: string;
-  relevantMessages: Array<{
-    content: string;
-    createdAt: string;
-    userId: string;
-    isEdited?: boolean;
-    messageType?: string;
-  }>;
+  sources: Source[];
 }
 
 export interface AIQueryOptions {

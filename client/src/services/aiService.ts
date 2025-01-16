@@ -3,21 +3,24 @@ import { API_BASE_URL } from '../config/api';
 import { store } from '../store';
 import { RootState } from '../store/store';
 
+interface Source {
+  content: string;
+  createdAt: string;
+  userId: string;
+  channelId: string;
+  score: number;
+  isEdited?: boolean;
+}
+
 interface AIResponse {
   answer: string;
-  relevantMessages: Array<{
-    content: string;
-    createdAt: string;
-    userId: string;
-    isEdited?: boolean;
-    messageType?: string;
-  }>;
+  sources: Source[];
 }
 
 class AIService {
   private baseUrl = `${API_BASE_URL}/api/ai`;
 
-  async askQuestion(question: string, channelId: string): Promise<string> {
+  async askQuestion(question: string, channelId: string): Promise<AIResponse> {
     try {
       const state = store.getState() as RootState;
       const token = state.auth.token;
@@ -39,7 +42,7 @@ class AIService {
         }
       );
 
-      return response.data.answer;
+      return response.data;
     } catch (error) {
       console.error('Error in AI service:', error);
       throw error;

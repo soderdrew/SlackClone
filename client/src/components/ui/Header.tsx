@@ -108,6 +108,7 @@ const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
   const members = useAppSelector(state => selectChannelMembers(state, channelId));
   const isLoadingMembers = useAppSelector(state => selectChannelMembersLoading(state, channelId));
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const channel = useAppSelector(state => state.channels.channels.find(c => c.id === channelId));
 
   useEffect(() => {
     if (channelId) {
@@ -127,13 +128,15 @@ const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
       <div className="flex items-center space-x-4">
         <GlobalSearch />
         
-        <Button 
-          variant="ghost" 
-          className="p-2"
-          onClick={() => setIsAIModalOpen(true)}
-        >
-          <AIIcon className="h-5 w-5" />
-        </Button>
+        {channel?.type !== 'direct' && (
+          <Button 
+            variant="ghost" 
+            className="p-2"
+            onClick={() => setIsAIModalOpen(true)}
+          >
+            <AIIcon className="h-5 w-5" />
+          </Button>
+        )}
         
         <Popover className="relative">
           <Popover.Button as={Button} variant="ghost">

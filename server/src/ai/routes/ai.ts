@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken } from '../../middleware/auth';
 import { generateResponse } from '../services/chatService';
+import { AIQueryResponse } from '../types';
 
 const router = Router();
 
@@ -9,20 +10,20 @@ interface AskRequest {
   channelId?: string;
 }
 
-router.post('/ask', authenticateToken, async (req: Request<{}, {}, AskRequest>, res: Response): Promise<void> => {
+router.post('/ask', authenticateToken, async (req: Request<{}, {}, AskRequest>, res: Response<AIQueryResponse>): Promise<void> => {
   try {
     const { query, channelId } = req.body;
     
     if (!query) {
-      res.status(400).json({ error: 'Query is required' });
+      res.status(400).json({ error: 'Query is required' } as any);
       return;
     }
 
-    const answer = await generateResponse(query, channelId);
-    res.json({ answer });
+    const response = await generateResponse(query, channelId);
+    res.json(response);
   } catch (error) {
     console.error('Error in /ask endpoint:', error);
-    res.status(500).json({ error: 'Failed to generate response' });
+    res.status(500).json({ error: 'Failed to generate response' } as any);
   }
 });
 
