@@ -294,53 +294,38 @@ class ChannelService {
       }
 
       // First, check if a DM channel already exists between these users
+      const userIds = [currentUser.user.id, otherUserId].sort();
+      const channelName = `dm-${userIds[0]}-${userIds[1]}`;
+
       const { data: existingChannels } = await supabase
         .from('channels')
         .select(`
           *,
-          channel_members!inner (user_id)
+          channel_members!inner (
+            user_id,
+            role,
+            profiles:user_id (
+              id,
+              username,
+              full_name,
+              avatar_url
+            )
+          )
         `)
         .eq('type', 'direct')
-        .eq('channel_members.user_id', currentUser.user.id);
+        .eq('name', channelName)
+        .single();
 
-      // Find a channel where both users are members
-      const existingDM = existingChannels?.find(channel => 
-        channel.channel_members.some((member: any) => member.user_id === otherUserId)
-      );
-
-      if (existingDM) {
-        // Fetch the existing channel with all necessary data
-        const { data: channelWithMembers } = await supabase
-          .from('channels')
-          .select(`
-            *,
-            channel_members!inner (
-              user_id,
-              role,
-              profiles:user_id (
-                id,
-                username,
-                full_name,
-                avatar_url
-              )
-            )
-          `)
-          .eq('id', existingDM.id)
-          .single();
-
-        if (!channelWithMembers) {
-          throw new Error('Failed to fetch existing DM channel');
-        }
-
+      if (existingChannels) {
+        console.log('Found existing DM channel:', existingChannels.id);
         return {
-          ...channelWithMembers,
-          member_count: channelWithMembers.channel_members.length,
+          ...existingChannels,
+          member_count: existingChannels.channel_members.length,
           is_member: true
         };
       }
 
       // Create a new DM channel with a properly formatted name
-      const channelName = `dm-${currentUser.user.id}-${otherUserId}`;
       console.log('Creating new DM channel:', channelName);
 
       const { data: newChannel, error } = await supabase

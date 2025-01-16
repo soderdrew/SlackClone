@@ -21,31 +21,44 @@ interface DMChannel extends Channel {
 
 // Add this function to process DM channels
 const processDMChannels = async (channels: Channel[], currentUserId: string): Promise<DMChannel[]> => {
-  const processedChannels = await Promise.all(channels
+  // Create a Map to store unique DM channels by sorted user IDs
+  const uniqueDMs = new Map<string, { channel: Channel; otherUserId: string }>();
+  
+  // First pass: group channels by the sorted user IDs
+  channels
     .filter(channel => channel.type === 'direct')
-    .map(async channel => {
-      const defaultResult = {
-        ...channel,
-        displayName: 'Unknown User',
-        username: '',
-        avatar_url: undefined
-      };
-
+    .forEach(channel => {
       try {
         // Remove 'dm-' prefix and split into two UUIDs
         const matches = channel.name
           .substring(3) // Remove 'dm-'
           .match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
 
-        if (!matches || matches.length !== 2) {
-          return defaultResult;
-        }
+        if (!matches || matches.length !== 2) return;
 
-        const [firstUserId, secondUserId] = matches;
-        // Get the other user's ID (the one that's not the current user)
-        const otherUserId = firstUserId === currentUserId ? secondUserId : firstUserId;
+        // Sort the UUIDs to ensure consistent order
+        const sortedUserIds = matches.sort();
+        const dmKey = `${sortedUserIds[0]}-${sortedUserIds[1]}`;
+        const otherUserId = sortedUserIds[0] === currentUserId ? sortedUserIds[1] : sortedUserIds[0];
         
-        // Fetch the other user's information directly
+        // Only keep the most recent channel for each unique user pair
+        if (!uniqueDMs.has(dmKey) || 
+            new Date(channel.created_at) > new Date(uniqueDMs.get(dmKey)!.channel.created_at)) {
+          uniqueDMs.set(dmKey, {
+            channel,
+            otherUserId
+          });
+        }
+      } catch (error) {
+        console.error('Error processing DM channel:', error);
+      }
+    });
+
+  // Second pass: fetch user info for unique DMs
+  const processedChannels = await Promise.all(
+    Array.from(uniqueDMs.values()).map(async ({ channel, otherUserId }) => {
+      try {
+        // Fetch the other user's information
         const otherUser = await userService.getUserById(otherUserId);
         
         return {
@@ -55,10 +68,16 @@ const processDMChannels = async (channels: Channel[], currentUserId: string): Pr
           avatar_url: otherUser.avatar_url
         };
       } catch (error) {
-        console.error('Error processing DM channel:', error);
-        return defaultResult;
+        console.error('Error fetching user info for DM:', error);
+        return {
+          ...channel,
+          displayName: 'Unknown User',
+          username: '',
+          avatar_url: undefined
+        };
       }
-    }));
+    })
+  );
 
   return processedChannels;
 };
