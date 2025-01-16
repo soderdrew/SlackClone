@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AuthState, User } from '../../types/auth';
+import { Profile } from '../../types/user';
 
 const initialState: AuthState = {
   user: null,
@@ -23,6 +24,11 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.error = null;
     },
+    setProfile: (state, action: PayloadAction<Profile>) => {
+      if (state.user) {
+        state.user.profile = action.payload;
+      }
+    },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
     },
@@ -44,7 +50,13 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, setLoading, setError, logout, updateUser } =
-  authSlice.actions;
+export const { 
+  setCredentials, 
+  setProfile,
+  setLoading, 
+  setError, 
+  logout, 
+  updateUser 
+} = authSlice.actions;
 
 export default authSlice.reducer; 

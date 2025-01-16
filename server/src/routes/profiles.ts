@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { supabase } from '../config/supabase';
+import { supabase, adminSupabase } from '../config/supabase';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
@@ -36,26 +36,38 @@ router.patch('/bio', authenticateToken, async (req: Request, res: Response): Pro
     const userId = req.user?.id;
     const { bio } = req.body;
 
+    if (!userId) {
+      res.status(401).json({ error: 'User ID not found in token' });
+      return;
+    }
+
     if (bio === undefined) {
       res.status(400).json({ error: 'Bio is required' });
       return;
     }
 
-    // Update the profile
-    const { data, error } = await supabase
+    console.log('Attempting to update bio for user:', userId);
+
+    // Update the profile using the admin client
+    const { data: updatedProfile, error: updateError } = await adminSupabase
       .from('profiles')
       .update({ bio })
       .eq('id', userId)
       .select()
       .single();
 
-    if (error) throw error;
+    if (updateError) {
+      console.error('Error updating profile:', updateError);
+      throw updateError;
+    }
 
-    res.json({ profile: data });
+    console.log('Successfully updated bio for user:', userId);
+    res.json({ profile: updatedProfile });
   } catch (error: any) {
     console.error('Error updating bio:', error);
     res.status(500).json({ 
-      error: error.message || 'Failed to update bio' 
+      error: error.message || 'Failed to update bio',
+      details: error.details || undefined
     });
   }
 });

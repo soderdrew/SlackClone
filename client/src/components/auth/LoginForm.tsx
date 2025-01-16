@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { setCredentials, setError, setLoading } from '../../features/auth/authSlice';
+import { setCredentials, setError, setLoading, setProfile } from '../../features/auth/authSlice';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
@@ -78,6 +78,15 @@ export function LoginForm() {
         parsedCredentials?.full_name || data.user.user_metadata?.full_name
       );
 
+      // Fetch the user's profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       // Clear stored credentials after successful profile creation
       sessionStorage.removeItem('pendingCredentials');
 
@@ -85,6 +94,11 @@ export function LoginForm() {
         user: data.user,
         token: data.session.access_token,
       }));
+
+      // Set the profile in the Redux store
+      if (profile) {
+        dispatch(setProfile(profile));
+      }
       
       toast.success('Successfully logged in!');
       navigate('/');

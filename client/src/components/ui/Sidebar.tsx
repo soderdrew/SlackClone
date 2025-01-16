@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useAppSelector } from '../../hooks/redux';
+import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { Channel } from '../../types/channel';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { StartDMModal } from '../messages/StartDMModal';
@@ -12,6 +12,11 @@ import { StatusIndicator } from './StatusIndicator';
 import { UpdateStatusModal } from './UpdateStatusModal';
 import { UserStatus, UserPresence } from '../../types/user';
 import { usePresenceSubscription } from '../../hooks/usePresenceSubscription';
+import { ProfileButton } from '../profile/ProfileButton';
+import { ProfileModal } from '../profile/ProfileModal';
+import { profileService } from '../../services/profileService';
+import { setProfile } from '../../features/auth/authSlice';
+import { useToast } from '../../hooks/useToast';
 
 interface DMChannel extends Channel {
   displayName: string;
@@ -94,6 +99,9 @@ export function Sidebar() {
   const currentUser = useAppSelector(state => state.auth.user);
   const channels = useAppSelector(state => state.channels.channels);
   const [dmChannels, setDMChannels] = useState<DMChannel[]>([]);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const toast = useToast();
 
   // Handle presence updates
   const handlePresenceUpdate = useCallback((update: { id: string; presence: UserPresence }) => {
@@ -161,8 +169,8 @@ export function Sidebar() {
   );
 
   return (
-    <div className="bg-gray-900 text-white w-64 flex-shrink-0 h-screen overflow-y-auto">
-      <div className="p-4">
+    <div className="bg-gray-900 text-white w-64 flex-shrink-0 h-screen overflow-y-auto relative">
+      <div className="p-4 pb-32">
         <h1 className="text-xl font-bold mb-4">Workspace Name</h1>
         
         {/* Status Button */}
@@ -274,6 +282,16 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* Profile Section - Fixed at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 border-t border-gray-700 bg-gray-900 p-4">
+        {currentUser && (
+          <ProfileButton
+            user={currentUser}
+            onClick={() => setIsProfileModalOpen(true)}
+          />
+        )}
+      </div>
+
       {/* Modals */}
       <StartDMModal
         isOpen={isStartDMModalOpen}
@@ -283,8 +301,6 @@ export function Sidebar() {
         isOpen={isCreateChannelModalOpen}
         onClose={() => setIsCreateChannelModalOpen(false)}
       />
-
-      {/* Status Modal */}
       <UpdateStatusModal
         isOpen={isStatusModalOpen}
         onClose={() => setIsStatusModalOpen(false)}
@@ -292,6 +308,23 @@ export function Sidebar() {
         currentStatusMessage={currentStatusMessage}
         userId={currentUser?.id || ''}
       />
+      {currentUser?.profile && (
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          profile={currentUser.profile}
+          onSave={async (bio) => {
+            try {
+              const updatedProfile = await profileService.updateBio(bio);
+              dispatch(setProfile(updatedProfile));
+              toast.success('Profile updated successfully!');
+            } catch (error) {
+              console.error('Error updating profile:', error);
+              toast.error('Failed to update profile');
+            }
+          }}
+        />
+      )}
     </div>
   );
 } 

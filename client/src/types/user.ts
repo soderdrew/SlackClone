@@ -8,10 +8,11 @@ export interface UserPresence {
 
 export interface User {
   id: string;
-  username: string;
+  username?: string;
   full_name?: string;
   avatar_url?: string;
   presence?: UserPresence;
+  profile?: Profile;
 }
 
 // Type for updating user status

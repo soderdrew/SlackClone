@@ -24,28 +24,6 @@ interface Source {
   isEdited?: boolean;
 }
 
-// Selectors
-const selectUserById = (state: RootState, userId: string): User | undefined => {
-  // If the current user matches the userId, return from auth.user
-  if (state.auth.user?.id === userId) {
-    // Map the auth user to our application User type
-    return {
-      id: state.auth.user.id,
-      username: state.auth.user.email?.split('@')[0] || 'unknown',
-      avatar_url: state.auth.user.user_metadata?.avatar_url,
-      full_name: state.auth.user.user_metadata?.full_name,
-      presence: { 
-        status: 'online',
-        online_at: new Date().toISOString(),
-        status_message: 'Available'
-      }
-    };
-  }
-  // For other users, we'll need to get them from the channel members
-  const allChannelMembers = Object.values(state.channels.channelMembers).flat();
-  return allChannelMembers.find(member => member.user_id === userId)?.user;
-};
-
 const selectChannelById = (state: RootState, channelId: string): Channel | undefined =>
   state.channels.channels.find(channel => channel.id === channelId);
 

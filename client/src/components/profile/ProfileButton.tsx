@@ -30,10 +30,10 @@ export const ProfileButton: FC<ProfileButtonProps> = ({ user, onClick }) => {
       {/* User Info */}
       <div className="flex-1 min-w-0 text-left">
         <p className="text-sm font-medium text-white truncate">
-          {user.full_name || user.username}
+          {user.profile?.full_name || user.username || 'Your Profile'}
         </p>
         <p className="text-xs text-gray-400 truncate">
-          {user.presence?.status_message || 'Set a status'}
+          View profile
         </p>
       </div>
     </button>

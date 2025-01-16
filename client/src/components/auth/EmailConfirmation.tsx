@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/redux';
-import { setCredentials, setError } from '../../features/auth/authSlice';
+import { setCredentials, setError, setProfile } from '../../features/auth/authSlice';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { Button } from '../ui/Button';
 import { useToast } from '../../hooks/useToast';
@@ -35,6 +35,15 @@ export function EmailConfirmation() {
 
           const credentials = JSON.parse(credentialsStr);
 
+          // Fetch the user's profile
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profileError) throw profileError;
+
           // Attempt to sign in with our backend
           const response = await fetch(`${API_BASE_URL}/api/auth/signin`, {
             method: 'POST',
@@ -56,6 +65,11 @@ export function EmailConfirmation() {
             user: data.user,
             token: data.session.access_token,
           }));
+
+          // Set the profile in the Redux store
+          if (profile) {
+            dispatch(setProfile(profile));
+          }
 
           // Navigate to home
           navigate('/');

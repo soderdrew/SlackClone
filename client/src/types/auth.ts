@@ -1,6 +1,10 @@
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { Profile } from './user';
 
-export type User = SupabaseUser;
+export interface User extends SupabaseUser {
+  profile?: Profile;
+  username?: string;
+}
 
 export interface AuthState {
   user: User | null;
