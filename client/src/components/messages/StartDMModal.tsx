@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast';
 
 interface User {
   id: string;
-  username: string;
+  username?: string;
   full_name?: string;
   avatar_url?: string;
 }
@@ -49,8 +49,8 @@ export function StartDMModal({ isOpen, onClose }: StartDMModalProps) {
   const filteredUsers = users.filter(user => {
     const searchLower = searchQuery.toLowerCase();
     return (
-      user.username.toLowerCase().includes(searchLower) ||
-      user.full_name?.toLowerCase().includes(searchLower)
+      (user.username?.toLowerCase().includes(searchLower) || false) ||
+      (user.full_name?.toLowerCase().includes(searchLower) || false)
     );
   });
 
@@ -117,21 +117,21 @@ export function StartDMModal({ isOpen, onClose }: StartDMModalProps) {
                     {user.avatar_url ? (
                       <img
                         src={user.avatar_url}
-                        alt={user.username}
+                        alt={user.username || 'User'}
                         className="w-full h-full rounded-full"
                       />
                     ) : (
                       <span className="text-gray-600">
-                        {(user.username[0] || '').toUpperCase()}
+                        {((user.username || '')[0] || 'U').toUpperCase()}
                       </span>
                     )}
                   </div>
                   <div className="flex-1 text-left">
                     <div className="font-medium text-gray-900">
-                      {user.full_name || user.username}
+                      {user.full_name || user.username || 'Unknown User'}
                     </div>
                     <div className="text-sm text-gray-500">
-                      @{user.username}
+                      @{user.username || 'unknown'}
                     </div>
                   </div>
                 </button>

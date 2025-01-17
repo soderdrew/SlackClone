@@ -18,7 +18,7 @@ import { Header } from '../ui/Header';
 
 interface DMUser {
   id: string;
-  username: string;
+  username?: string;
   full_name?: string;
   avatar_url?: string;
 }
@@ -331,7 +331,12 @@ export function ChannelView() {
 
       try {
         const userData = await userService.getUserById(otherUserId);
-        setOtherUser(userData);
+        setOtherUser({
+          id: userData.id,
+          username: userData.username || 'unknown',
+          full_name: userData.full_name,
+          avatar_url: userData.avatar_url
+        });
       } catch (error) {
         console.error('Failed to fetch other user:', error);
       }
