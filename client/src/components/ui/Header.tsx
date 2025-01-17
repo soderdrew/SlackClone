@@ -9,6 +9,7 @@ import { GlobalSearch } from '../search/GlobalSearch';
 import { StatusIndicator } from './StatusIndicator';
 import { AIIcon } from '../icons/AIIcon';
 import { AIModal } from '../ai/AIModal';
+import { AvatarChatButton } from '../profile/AvatarChatButton';
 
 interface HeaderProps {
   channelName: string;
@@ -109,12 +110,18 @@ const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
   const isLoadingMembers = useAppSelector(state => selectChannelMembersLoading(state, channelId));
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const channel = useAppSelector(state => state.channels.channels.find(c => c.id === channelId));
+  const currentUser = useAppSelector(state => state.auth.user);
 
   useEffect(() => {
     if (channelId) {
       dispatch(fetchChannelMembers(channelId));
     }
   }, [channelId, dispatch]);
+
+  // Get the other user's profile for DM channels
+  const otherUserProfile = channel?.type === 'direct' && members?.find(member => 
+    member.user_id !== currentUser?.id
+  )?.user;
 
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
@@ -128,7 +135,24 @@ const Header: FC<HeaderProps> = ({ channelName, channelId, topic }) => {
       <div className="flex items-center space-x-4">
         <GlobalSearch />
         
-        {channel?.type !== 'direct' && (
+        {channel?.type === 'direct' && otherUserProfile ? (
+          <AvatarChatButton
+            profile={{
+              id: otherUserProfile.id,
+              username: otherUserProfile.username || '',
+              full_name: otherUserProfile.full_name || null,
+              avatar_url: otherUserProfile.avatar_url || null,
+              status: otherUserProfile.presence?.status || 'offline',
+              status_message: otherUserProfile.presence?.status_message || null,
+              status_emoji: null,
+              online_at: otherUserProfile.presence?.online_at || null,  
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              bio: otherUserProfile.profile?.bio || null,
+              last_seen: otherUserProfile.presence?.online_at || null
+            }}
+          />
+        ) : channel?.type !== 'direct' && (
           <Button 
             variant="ghost" 
             className="p-2"

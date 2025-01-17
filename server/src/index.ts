@@ -9,6 +9,7 @@ import messageRoutes from './routes/messages';
 import webhookRoutes from './ai/routes/webhook';
 import aiRoutes from './ai/routes/ai';
 import profileRoutes from './routes/profiles';
+import documentsRoutes from './routes/documents';
 
 // Load environment variables
 dotenv.config();
@@ -39,9 +40,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api', messageRoutes); // This will handle both /messages and /channels/:channelId/messages
 app.use('/webhooks', webhookRoutes); // Add webhook routes
-app.use('/api/ai', aiRoutes); // Add AI routes
+app.use('/api/ai', aiRoutes); // Add AI routes (now includes avatar routes)
 app.use('/api/profiles', profileRoutes); // Add profile routes
-
+app.use('/api/documents', documentsRoutes); // Add documents routes
 // Basic health check route
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });

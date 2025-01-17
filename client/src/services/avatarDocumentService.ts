@@ -1,5 +1,9 @@
 import { supabase } from '../lib/supabase';
 import { AvatarDocument, AvatarDocumentInsert } from '../types/documents';
+import { API_BASE_URL } from '../config/api';
+import { store } from '../store';
+import { RootState } from '../store/store';
+import axios from 'axios';
 
 const BUCKET_NAME = 'avatars';
 
@@ -111,16 +115,27 @@ export const avatarDocumentService = {
   },
 
   async getUserDocuments(userId: string): Promise<AvatarDocument[]> {
-    const { data, error } = await supabase
-      .from('avatar_documents')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    try {
+      const state = store.getState() as RootState;
+      const token = state.auth.token;
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
 
-    if (error) {
-      throw new Error(`Error fetching user documents: ${error.message}`);
+      const response = await axios.get<{ documents: AvatarDocument[] }>(
+        `${API_BASE_URL}/api/documents/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      return response.data.documents || [];
+    } catch (error) {
+      console.error('Error fetching user documents:', error);
+      throw error;
     }
-
-    return data || [];
   }
 }; 
