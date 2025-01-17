@@ -1,5 +1,5 @@
 import { similaritySearch } from '../services/searchService';
-import { pineconeClient, INDEX_NAME } from '../config/pinecone';
+import { pineconeClient, MESSAGE_INDEX_NAME } from '../config/pinecone';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -9,7 +9,7 @@ async function listStoredMessages() {
   console.log('\nListing all stored messages in Pinecone:');
   console.log('----------------------------------------');
   
-  const index = pineconeClient.index(INDEX_NAME);
+  const index = pineconeClient.index(MESSAGE_INDEX_NAME);
   const queryResponse = await index.query({
     vector: new Array(1536).fill(0),
     topK: 100,

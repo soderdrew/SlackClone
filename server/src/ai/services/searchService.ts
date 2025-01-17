@@ -1,4 +1,4 @@
-import { pineconeClient, INDEX_NAME } from '../config/pinecone';
+import { pineconeClient, MESSAGE_INDEX_NAME } from '../config/pinecone';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { EmbeddingMetadata } from '../types';
 import { RecordMetadata } from '@pinecone-database/pinecone';
@@ -40,7 +40,7 @@ export const similaritySearch = async (
     
     // Search Pinecone index with retries
     console.log('Searching Pinecone index...');
-    const index = pineconeClient.index(INDEX_NAME);
+    const index = pineconeClient.index(MESSAGE_INDEX_NAME);
     
     let results: SearchResult[] = [];
     let retries = 0;

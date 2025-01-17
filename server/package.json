@@ -23,6 +23,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "langchain": "^0.3.11",
+    "mammoth": "^1.9.0",
+    "pdf-parse": "^1.1.1",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 import { EmbeddingMetadata } from '../types';
 import { openai } from '../config/openai';
-import { pineconeClient, INDEX_NAME } from '../config/pinecone';
+import { pineconeClient, MESSAGE_INDEX_NAME } from '../config/pinecone';
 import { PineconeRecord } from '@pinecone-database/pinecone';
 
 export const embedMessage = async (message: EmbeddingMetadata) => {
@@ -10,7 +10,7 @@ export const embedMessage = async (message: EmbeddingMetadata) => {
 export const embedMessages = async (messages: EmbeddingMetadata[]) => {
   try {
     // 1. Get the index
-    const index = pineconeClient.index(INDEX_NAME);
+    const index = pineconeClient.index(MESSAGE_INDEX_NAME);
 
     // 2. Clean and prepare texts
     const texts = messages.map(msg => {
@@ -90,7 +90,7 @@ export const embedMessages = async (messages: EmbeddingMetadata[]) => {
 
 export const deleteMessageEmbedding = async (messageId: string) => {
   try {
-    const index = pineconeClient.index(INDEX_NAME);
+    const index = pineconeClient.index(MESSAGE_INDEX_NAME);
     await index.deleteOne(messageId);
     console.log(`Successfully deleted embedding for message ${messageId}`);
   } catch (error) {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { handleNewMessage, handleMessageUpdate, handleMessageDeletion } from '../services/messageHandler';
+import { handleNewDocument, handleDocumentDeletion } from '../services/documentHandler';
 
 const router = Router();
 
@@ -23,7 +24,6 @@ const verifyWebhookSecret = (req: any, res: any, next: any) => {
 
 /**
  * Webhook endpoint to handle Supabase realtime events for messages
- * This endpoint will be called by Supabase when messages are created/updated/deleted
  */
 router.post('/message-events', verifyWebhookSecret, async (req, res) => {
   try {
@@ -66,6 +66,42 @@ router.post('/message-events', verifyWebhookSecret, async (req, res) => {
     console.error('Error processing message event:', error);
     res.status(500).json({ 
       error: 'Failed to process message event',
+      details: error.message || 'Unknown error'
+    });
+  }
+});
+
+/**
+ * Webhook endpoint to handle Supabase realtime events for avatar documents
+ */
+router.post('/document-events', verifyWebhookSecret, async (req, res) => {
+  try {
+    const { type, record, old_record } = req.body;
+    console.log('Document webhook received:', {
+      type,
+      documentId: record?.id || old_record?.id
+    });
+    
+    switch (type) {
+      case 'INSERT':
+        await handleNewDocument(record);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        break;
+      
+      case 'DELETE':
+        await handleDocumentDeletion(old_record.id);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        break;
+      
+      default:
+        console.warn(`Unhandled event type: ${type}`);
+    }
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error processing document event:', error);
+    res.status(500).json({ 
+      error: 'Failed to process document event',
       details: error.message || 'Unknown error'
     });
   }
